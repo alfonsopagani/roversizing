@@ -1,0 +1,65 @@
+# Dati comuni a tutti i gruppi: requisiti di missione e ipotesi comuni (Design brief) e
+# ambiente di Marte (Scheda dati di riferimento, sezione Ambiente marziano).
+#
+# Questo file NON va modificato: garantisce che tutti i progetti siano
+# confrontati a parità di requisiti. Il report segnala se il contenuto
+# differisce dalla versione distribuita con lo strumento.
+#
+# Convenzione sulle unità: il suffisso della chiave indica l'unità
+# (_km, _kmh, _h, _kpa, _deg, _kg, _m ...). Lo strumento converte in SI.
+
+[mission]
+crew = 2                          # MR-01: equipaggio nominale
+excursion_sols = 14               # MR-03: durata massima di un'escursione
+eva_count = 10                    # MR-04: EVA per escursione (minimo)
+eva_crew = 2                      # MR-04: EVA a due persone
+eva_duration_h = 8                # MR-04: durata massima di un'EVA
+payload_kg = 500                  # MR-06: 250 kg strumenti + 150 kg trapano + 100 kg campioni
+excursions_min = 12               # MR-07: escursioni nella vita operativa (minimo)
+excursions_max = 18               # MR-07: escursioni nella vita operativa (massimo)
+distance_km = 100                 # MR-08: percorrenza per escursione con le sole risorse a bordo
+max_radius_km = 50                # MR-08: distanza massima dalla base
+v_flat_kmh = 5                    # MR-10: velocità in piano su suolo compatto
+v_plan_kmh = 3                    # MR-10: velocità media da usare nella pianificazione delle escursioni
+slope_deg = 15                    # MR-11: pendenza da superare
+v_slope_kmh = 1                   # MR-11: velocità minima in pendenza
+stability_deg = 25                # MR-11: stabilità statica
+cabin_pressure_kpa = 57           # MR-13: pressione della cabina
+cabin_o2_fraction = 0.34          # MR-13: frazione molare di O2
+emergency_crew = 4                # MR-14: persone a bordo in emergenza
+emergency_duration_h = 72         # MR-14: durata dell'emergenza, rientro compreso
+storm_irradiance_fraction = 0.15  # MR-15: irraggiamento durante la tempesta
+spe_dose_limit_msv = 250          # origine di MR-16 (limite di dose per l'evento di riferimento), riportata come informazione
+spe_shield_g_cm2 = 10             # MR-16: schermatura minima del riparo nelle direzioni non coperte dal suolo
+fairing_diameter_m = 9.1          # MR-19: diametro utile della carenatura SLS da 10 m
+fairing_b1b_diameter_m = 7.5      # MR-19, facoltativo: diametro interno della carenatura da 8,4 m del Block 1B
+mass_limit_kg = 7500              # MR-20: massa a pieno carico, margini compresi
+fem_margin_min = 0                # MR-22: margine di sicurezza minimo (MS ≥ 0)
+fem_freq_lateral_min_hz = 8       # MR-22: prima frequenza propria laterale in configurazione di lancio
+fem_freq_axial_min_hz = 15        # MR-22: prima frequenza propria assiale in configurazione di lancio
+
+[assumptions]                     # Design brief, Ipotesi comuni
+crr_min = 0.1                     # coefficiente di resistenza al moto di progetto: minimo
+crr_max = 0.3                     # coefficiente di resistenza al moto di progetto: massimo
+service_load_min_kw = 1.8         # carichi di servizio prima del margine: minimo
+service_load_max_kw = 3.4         # carichi di servizio prima del margine: massimo
+
+[margins]                         # MR-21
+mga_new = 0.20                    # componenti da progettare
+mga_modified = 0.10               # derivati da prodotti esistenti con modifiche
+mga_existing = 0.05               # componenti esistenti
+system = 0.15                     # margine di sistema sulla massa di base delle voci con margine (escluse le masse fisse)
+power = 0.30                      # margine sui carichi di servizio (trazione esclusa)
+
+[environment]                     # Scheda, Ambiente marziano e Radiazioni
+g = 3.72                          # accelerazione di gravità [m/s^2]
+sol_h = 24.65                     # durata del sol: 24 h 39 min
+night_h = 12                      # durata della notte: circa 12 h (Design brief; Scheda, Ambiente marziano)
+ground_hot_k = 247                # temperatura del suolo, caso caldo
+ground_cold_k = 155               # temperatura del suolo, caso freddo
+sky_hot_k = 179.5                 # temperatura del cielo, caso caldo
+sky_cold_k = 139.7                # temperatura del cielo, caso freddo
+spe_dose_unshielded_msv = 40      # dose efficace dall'evento di riferimento senza schermatura (Scheda, Radiazioni)
+spe_dose_shelter_msv = 25         # dose efficace nel riparo di riferimento (Scheda, Radiazioni)
+spe_shelter_shield_g_cm2 = 10     # schermatura del riparo di riferimento (Scheda, Radiazioni)
+gcr_dose_msv_d = 0.59             # dose efficace giornaliera da raggi cosmici, minimo solare (Scheda, Radiazioni)

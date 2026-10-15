@@ -1,0 +1,67 @@
+{
+  // Configurazioni di avvio per VS Code (pannello "Esegui e debug", tasto F5).
+  // Per usare il file del gruppo, sostituire "progetti/esempio.toml" con il proprio file.
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Esempio: report a terminale",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "dimensionamento",
+      "args": ["progetti/esempio.toml"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
+      "name": "Esempio: report, CSV e grafici in risultati/",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "dimensionamento",
+      "args": ["progetti/esempio.toml", "--out", "risultati", "--plot"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
+      "name": "Esempio: sensitività su C_rr",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "dimensionamento",
+      "args": ["progetti/esempio.toml", "--sweep", "mobility.crr", "0.1", "0.6", "11", "--out", "risultati", "--plot"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
+      "name": "Esempio: verifica fuori progetto a C_rr 0,6",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "dimensionamento",
+      "args": ["progetti/esempio.toml", "--fuori-progetto", "mobility.crr=0.6"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
+      "name": "Esempio: sensitività su C_rr a rover congelato",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "dimensionamento",
+      "args": ["progetti/esempio.toml", "--sweep", "mobility.crr", "0.1", "0.6", "11", "--congelato", "--out", "risultati", "--plot"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
+      "name": "File TOML aperto nell'editor",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "dimensionamento",
+      "args": ["${file}"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    }
+  ]
+}

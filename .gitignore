@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+risultati/
+.DS_Store
+Thumbs.db
+.vs/
+.vscode/*
+!.vscode/launch.json
+!.vscode/settings.json

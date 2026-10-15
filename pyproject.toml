@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "roversizing"
+version = "1.0.0"
+description = "Dimensionamento di ordine ridotto di un rover pressurizzato per Marte (esercitazione E2, Politecnico di Torino)"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [{ name = "Alfonso Pagani, Politecnico di Torino" }]
+requires-python = ">=3.10"
+dependencies = ['tomli>=1.1; python_version < "3.11"']
+
+[project.optional-dependencies]
+grafici = ["matplotlib"]
+test = ["pytest"]
+
+[tool.setuptools]
+packages = ["dimensionamento"]
+
+[tool.setuptools.package-data]
+dimensionamento = ["common.toml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

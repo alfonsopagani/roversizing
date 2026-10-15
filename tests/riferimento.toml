@@ -1,0 +1,303 @@
+# =============================================================================
+# File di input di riferimento per i test (tests/): NON modificare.
+# È una copia congelata di progetti/esempio.toml: i test confrontano i
+# risultati con valori noti di questo file. L'esempio da modificare è in
+# progetti/.
+# =============================================================================
+# Questo file descrive un rover di ESEMPIO. I valori NON sono ottimizzati e non
+# rappresentano una soluzione consigliata: servono a mostrare il formato e a
+# far girare lo strumento. Ogni gruppo copia questo file, lo rinomina e lo
+# modifica con le proprie scelte.
+#
+# Regole:
+# - ogni valore ha accanto un commento con la sua origine: un requisito (MR-xx),
+#   una sezione della Scheda dati, oppure "ipotesi del gruppo" con la motivazione;
+# - il suffisso della chiave indica l'unità (_kg, _m, _kmh, _kw, _h ...);
+# - i requisiti comuni (MR-01...MR-22) sono in dimensionamento/common.toml e non
+#   vanno ripetuti né modificati qui.
+#
+# Esecuzione:   python -m dimensionamento tests/riferimento.toml
+# =============================================================================
+
+[group]
+name = "Missione di esempio"      # nome della missione scelto dal gruppo: identifica il gruppo nelle review e nelle consegne
+version = "v0.1"                  # versione del progetto (cambiarla a ogni iterazione)
+students = [                      # Cognome Nome, matricola, ruolo
+  { name = "Cognome Nome", id = "s000000", role = "Systems engineer" },
+  { name = "Cognome Nome", id = "s000001", role = "Missione e ConOps" },
+]
+
+[architecture]
+power = "rps"                     # ipotesi del gruppo: "batterie", "rps", "fotovoltaico", "celle_combustibile", "ibrido"
+
+# -----------------------------------------------------------------------------
+# Missione e ConOps dell'escursione
+# -----------------------------------------------------------------------------
+[operations]
+v_mean_kmh = 3                    # MR-10: velocità media per la pianificazione
+climb_m = 2000                    # ipotesi del gruppo: salita cumulata nell'escursione (da profilo del percorso)
+maneuver_margin = 0.05            # Scheda, Potenza ed energia: 5% di margine sulla potenza di trazione (rover GRC), qui sull'energia
+reserve_d = 0                     # ipotesi del gruppo: giorni di riserva di consumabili oltre MR-03 e MR-14
+excursions = 18                   # MR-07: 12-18 escursioni; si usa il caso più severo
+
+# Sol tipo: ore passate in ciascun modo operativo. Ogni sol tipo deve sommare a
+# 24,65 h (un sol); la somma dei "count" deve essere 14 (MR-03).
+# I sol tipo si alternano nell'ordine in cui sono scritti.
+[[operations.sol_types]]
+name = "trasferimento"            # ipotesi del gruppo
+count = 4                         # ipotesi del gruppo: sol di solo trasferimento
+drive_h = 5                       # Scheda, Mobilità: 5 h di guida per sol (ipotesi DRA)
+eva_h = 0                         # nessuna EVA in questo sol tipo
+day_h = 7.35                      # sosta di giorno con equipaggio a bordo
+night_h = 12.3                    # ipotesi del gruppo: notte di circa 12 h (Design brief, Ambiente)
+
+[[operations.sol_types]]
+name = "guida ed EVA"             # ipotesi del gruppo
+count = 3                         # ipotesi del gruppo
+drive_h = 5                       # Scheda, Mobilità: 5 h di guida per sol
+eva_h = 4                         # ipotesi del gruppo: EVA breve a fine tragitto
+day_h = 3.35                      # sosta di giorno
+night_h = 12.3                    # ipotesi del gruppo
+
+[[operations.sol_types]]
+name = "EVA"                      # ipotesi del gruppo: sol dedicati alle EVA (MR-04)
+count = 7                         # ipotesi del gruppo: con i 3 sol precedenti fa 10 EVA (MR-04)
+drive_h = 0                       # nessuna guida
+eva_h = 8                         # MR-04: fino a 8 h
+day_h = 4.35                      # sosta di giorno
+night_h = 12.3                    # ipotesi del gruppo
+
+# -----------------------------------------------------------------------------
+# Carichi di servizio (tutto tranne la trazione), PRIMA del margine del 30%
+# -----------------------------------------------------------------------------
+[loads]
+drive_kw = 3.0                    # ipotesi del gruppo, nell'intervallo 1,8-3,4 kW (Design brief, Ipotesi comuni)
+day_kw = 3.0                      # ipotesi del gruppo
+eva_kw = 3.0                      # ipotesi del gruppo
+night_kw = 2.6                    # ipotesi del gruppo
+
+# -----------------------------------------------------------------------------
+# Rientri particolari
+# -----------------------------------------------------------------------------
+[emergency]                       # MR-14: 4 persone, rientro dal punto più lontano entro 72 h
+v_return_kmh = 3                  # ipotesi del gruppo: velocità di rientro
+drive_per_sol_h = 10              # ipotesi del gruppo: ore di guida per sol durante il rientro
+load_kw = 3.0                     # ipotesi del gruppo: carichi di servizio con 4 persone
+soc_initial = 0.5                 # ipotesi del gruppo: frazione dell'energia utile disponibile all'inizio
+
+[storm]                           # MR-15: rientro con il 15% dell'irraggiamento
+v_return_kmh = 3                  # ipotesi del gruppo
+drive_per_sol_h = 10              # ipotesi del gruppo
+load_kw = 3.0                     # ipotesi del gruppo: carichi di servizio durante il rientro
+soc_initial = 0.8                 # ipotesi del gruppo: stato di carica all'inizio della tempesta
+
+# -----------------------------------------------------------------------------
+# Abitabilità e volumi
+# -----------------------------------------------------------------------------
+[habitability]
+nhv_m3 = 9.7                      # Scheda, Abitabilità e volumi: NHV dello SPR Gen 1B
+nhv_fraction = 0.80               # Scheda, Abitabilità e volumi: 79-82%
+stowage_m3 = 1.36                 # Scheda, Abitabilità e volumi: capacità di stivaggio interna
+stowage_items_m3 = 1.1            # Scheda, Abitabilità e volumi: kit medici 0,256 m³; ipotesi del gruppo: ricambi, attrezzi, sacchi dei rifiuti e campioni
+other_pressurized_m3 = 0          # ipotesi del gruppo: nessun airlock interno
+water_inside = true               # ipotesi del gruppo: serbatoi d'acqua in cabina
+seats = 4                         # MR-14: posti per 4 persone in emergenza
+
+# -----------------------------------------------------------------------------
+# Cabina pressurizzata
+# -----------------------------------------------------------------------------
+[cabin]
+heads = "semisferici"             # ipotesi del gruppo: "semisferici" o "ellittici"
+head_ratio = 1.0                  # solo per fondi ellittici: profondità / raggio
+diameter_m = 2.5                  # ipotesi del gruppo
+length_m = 0                      # 0 = lunghezza calcolata dal volume richiesto
+shell_areal_kg_m2 = 10            # Scheda, Struttura: 5-10 kg/m^2 (rover USRA, valore prudente)
+interior_areal_kg_m2 = 5          # Scheda, Ripartizione delle masse: PLR, 490 kg su circa 94 m^2 di superficie totale (derivato)
+insulation_thickness_m = 0.03     # ipotesi del gruppo
+insulation_density_kg_m3 = 100    # Scheda, Controllo termico: aerogel
+insulation_conductivity = 0.016   # Scheda, Controllo termico: W/(m K) in atmosfera marziana
+shell_maturity = "da_progettare"  # MR-21
+interior_maturity = "da_progettare"# MR-21: maturità dichiarata dal gruppo
+insulation_maturity = "derivato"  # MR-21: maturità dichiarata dal gruppo
+fem_shell_kg = 0                  # MR-22: massa del guscio dal modello FEM (0 = stima areale)
+fem_nonmodeled_fraction = 0       # ipotesi del gruppo: struttura non modellata nel FEM (frazione)
+# fem_min_margin = 0.0            # MR-22: margine di sicurezza minimo fra tutti i casi di carico
+# fem_freq_lateral_hz = 0.0       # MR-22: prima frequenza propria laterale, configurazione di lancio
+# fem_freq_axial_hz = 0.0         # MR-22: prima frequenza propria assiale, configurazione di lancio
+cad_volume_m3 = 0                 # volume interno dal modello CAD/FEM (0 = cilindro con fondi)
+cad_area_m2 = 0                   # superficie del guscio dal modello CAD/FEM (0 = cilindro con fondi)
+
+# -----------------------------------------------------------------------------
+# ECLSS a ciclo aperto (valori della Scheda, sezione Equipaggio ed ECLSS)
+# -----------------------------------------------------------------------------
+[eclss]
+o2_kg_cmd = 0.895                 # Scheda, Equipaggio ed ECLSS
+co2_kg_cmd = 1.085                # Scheda, Equipaggio ed ECLSS
+food_kg_cmd = 1.76                # Scheda, Equipaggio ed ECLSS: cibo confezionato con contenitori
+food_volume_m3_cmd = 0.0048       # Scheda, Equipaggio ed ECLSS
+potable_water_kg_cmd = 3.217      # Scheda, Equipaggio ed ECLSS
+hygiene_water_kg_cmd = 0.7        # Scheda, Equipaggio ed ECLSS: veicolo di trasferimento
+eva_o2_kg_cmh = 0.1               # Scheda, Equipaggio ed ECLSS: EVA con suitport
+eva_o2_fixed_kg = 0.54            # Scheda, Equipaggio ed ECLSS: per persona a ogni EVA
+eva_water_kg_cmh = 0.24           # Scheda, Equipaggio ed ECLSS
+eva_food_kg_cmh = 0.04            # Scheda, Equipaggio ed ECLSS: intervallo 0,029-0,052
+cabin_leak_kg_d = 0.09            # Scheda, Equipaggio ed ECLSS
+metabolic_w = 144                 # Scheda, Equipaggio ed ECLSS: calore metabolico per persona
+body_mass_kg = 82                 # Scheda, Equipaggio ed ECLSS
+o2_recovery = 0                   # ipotesi del gruppo: ciclo aperto
+water_recovery = 0                # ipotesi del gruppo: ciclo aperto
+co2_sorbent_ratio = 1.5           # ipotesi del gruppo: kg di LiOH e cartucce per kg di CO2 (teorico 1/0,92, Scheda, Equipaggio ed ECLSS)
+o2_tank_ratio = 1.45              # Scheda, Equipaggio ed ECLSS: serbatoi in pressione
+n2_tank_ratio = 1.93              # Scheda, Equipaggio ed ECLSS: serbatoi in pressione
+water_tank_ratio = 0.10           # ipotesi del gruppo: la Scheda esclude i serbatoi d'acqua
+cabin_temperature_k = 295         # ipotesi del gruppo
+tanks_maturity = "derivato"       # MR-21
+
+[eva_access]                      # MR-05
+suitport_evas = 10                # ipotesi del gruppo: tutte le EVA con suitport
+airlock_evas = 0                  # ipotesi del gruppo: nessun airlock
+suitport_loss_kg = 0.03           # Scheda, Equipaggio ed ECLSS: gas perso per persona e per ciclo (requisito SPR)
+suitport_cycles_per_eva = 2       # ipotesi del gruppo: un ciclo in uscita e uno in rientro
+airlock_gas_m3 = 3.7              # Scheda, Equipaggio ed ECLSS: airlock per due persone
+airlock_loss_fraction = 0.10      # Scheda, Equipaggio ed ECLSS
+airlock_cycles_per_eva = 1        # ipotesi del gruppo
+
+[suits]                           # massa fissa, senza margini (MR-21)
+count = 2                         # ipotesi del gruppo
+mass_kg = 110                     # Scheda, Equipaggio ed ECLSS: tuta con PLSS
+
+# -----------------------------------------------------------------------------
+# Radiazioni (MR-16)
+# -----------------------------------------------------------------------------
+[radiation]
+shield_g_cm2 = 10                 # MR-16: schermatura minima del riparo
+shelter_area_m2 = 6.0             # ipotesi del gruppo: riparo per 2 persone sedute, superficie nelle direzioni non coperte dal suolo
+water_fraction = 0.5              # ipotesi del gruppo: acqua disponibile come schermo a metà escursione
+other_shielding_kg = 0            # ipotesi del gruppo: altri materiali riconfigurati
+maturity = "da_progettare"        # MR-21: maturità dichiarata dal gruppo
+
+# -----------------------------------------------------------------------------
+# Mobilità
+# -----------------------------------------------------------------------------
+[mobility]
+crr = 0.3                         # Design brief, Ipotesi comuni: valore di progetto fra 0,1 e 0,3
+eta = 0.75                        # Scheda, Mobilità: ipotesi da sostituire con una stima propria
+drive_specific_mass_kg_kw = 10    # Scheda, Mobilità: 6-13 kg per kW di picco
+drive_maturity = "da_progettare"  # MR-21: maturità dichiarata dal gruppo
+wheel_diameter_m = 2.0            # ipotesi del gruppo
+driven_wheels = 6                 # ipotesi del gruppo
+track_m = 2.2                     # ipotesi del gruppo: carreggiata ridotta per l'ingombro al lancio
+cg_height_m = 2.5                 # ipotesi del gruppo: cabina sopra ruote da 2 m; non usata se le posizioni sono complete
+
+# -----------------------------------------------------------------------------
+# Potenza ed energia
+# -----------------------------------------------------------------------------
+[battery]
+specific_energy_wh_kg = 184       # Scheda, Potenza ed energia: batterie Li-ion GRC
+dod_max = 0.8                     # Scheda, Potenza ed energia: DOD massimo GRC
+c_rate_max = 0.2                  # Scheda, Potenza ed energia: corrente di scarica, circa 0,2C nei progetti GRC (C = capacità nominale, 1/h)
+maturity = "derivato"             # MR-21: maturità dichiarata dal gruppo
+cycle_dod = [1.0, 0.8, 0.6, 0.4, 0.2]          # Scheda, Vita a cicli delle batterie
+cycle_count = [250, 500, 1000, 3000, 10000]    # Scheda, Vita a cicli delle batterie
+
+[rps]
+specific_power_w_kg = 9.6         # Scheda, Potenza ed energia: RPS dinamico
+power_kw = 0                      # 0 = dimensionato sulla potenza media dell'escursione
+maturity = "da_progettare"        # TRL 3-4
+
+[pv]
+specific_power_w_kg = 67          # Scheda, Potenza ed energia: ala GRC, τ = 1
+power_density_w_m2 = 129          # Scheda, Potenza ed energia: ala GRC, τ = 1
+optical_depth = 1.0               # solo informativo: τ a cui valgono i due valori precedenti
+sun_hours_h = 8.8                 # Scheda, Potenza ed energia: ore equivalenti di sole GRC (derivato)
+deployed_while_driving = false    # Scheda, Potenza ed energia: ala ripiegata durante la guida (GRC).
+                                  # true solo se motivato, con la struttura di supporto a budget in [[items]]
+power_kw = 0                      # 0 = dimensionata sul sol più impegnativo, con le sole ore ad ala aperta
+maturity = "da_progettare"        # MR-21: maturità dichiarata dal gruppo
+
+[fuel_cell]
+fixed_kg = 1299                   # derivato dai due casi PEM della Scheda, Potenza ed energia
+specific_mass_kg_kwh = 0.504      # derivato dai due casi PEM della Scheda, Potenza ed energia
+maturity = "da_progettare"        # MR-21: maturità dichiarata dal gruppo
+
+# -----------------------------------------------------------------------------
+# Controllo termico
+# -----------------------------------------------------------------------------
+[thermal]
+radiator_temperature_k = 300      # Scheda, Controllo termico: circuito di cabina
+emissivity = 0.84                 # Scheda, Controllo termico
+ground_view_factor = 0.5          # ipotesi del gruppo: radiatore verticale
+radiator_areal_kg_m2 = 3.5        # Scheda, Controllo termico
+dissipated_fraction = 1.0         # ipotesi del gruppo: tutti i carichi di servizio diventano calore in cabina
+maturity = "da_progettare"        # MR-21: maturità dichiarata dal gruppo
+
+# -----------------------------------------------------------------------------
+# Voci di massa dichiarate dal gruppo
+# -----------------------------------------------------------------------------
+[[items]]
+name = "Telaio"
+subsystem = "struttura"
+fraction = 0.09                   # Scheda, Ripartizione delle masse: 652 kg su 7.015 (rover USRA)
+maturity = "da_progettare"        # MR-21: maturità dichiarata dal gruppo
+
+[[items]]
+name = "Ruote e sospensioni"
+subsystem = "mobilita"
+fraction = 0.07                   # Scheda, Mobilità: 300-340 kg per rover lunari da 6-7 t; ipotesi del gruppo: maggiorata per il carico per ruota su Marte
+maturity = "da_progettare"        # MR-21: maturità dichiarata dal gruppo
+
+[[items]]
+name = "Hardware ECLSS e arredi"
+subsystem = "eclss"
+mass_kg = 400                     # Scheda, Ripartizione delle masse: PLR 813 kg, USRA 270+405 kg per 4 persone; ipotesi del gruppo per 2
+maturity = "da_progettare"        # MR-21: maturità dichiarata dal gruppo
+
+[[items]]
+name = "Avionica, comunicazioni e comandi"
+subsystem = "avionica"
+mass_kg = 300                     # Scheda, Ripartizione delle masse: PLR 356 kg, USRA circa 105 kg
+maturity = "derivato"             # MR-21: maturità dichiarata dal gruppo
+
+[[items]]
+name = "Accesso EVA: 2 suitport e portello"
+subsystem = "eva"
+mass_kg = 150                     # ipotesi del gruppo, da confrontare con le due camere USRA (230 kg)
+maturity = "da_progettare"        # MR-21: maturità dichiarata dal gruppo
+
+[[items]]
+name = "PMAD e cablaggi"
+subsystem = "potenza"
+mass_kg = 49                      # Scheda, Potenza ed energia: quadro 39,1 kg + 25% di cablaggi (GRC)
+maturity = "derivato"             # MR-21: maturità dichiarata dal gruppo
+
+[[items]]
+name = "Pompe, scambiatori e piastre fredde"
+subsystem = "termico"
+mass_kg = 100                     # Scheda, Controllo termico: circa 25 kg/kW del circuito interno × circa 4 kW
+maturity = "da_progettare"        # MR-21: maturità dichiarata dal gruppo
+
+# -----------------------------------------------------------------------------
+# Posizioni (facoltative) [x, y, z] in metri
+# -----------------------------------------------------------------------------
+# [positions]
+# cabin = [x, y, z]               # guscio, pavimento e pareti interne, isolamento
+# tanks = [x, y, z]               # serbatoi e loro contenuto (O2, N2, acqua)
+# crew = [x, y, z]                # equipaggio, cibo, assorbitore di CO2
+# suits = [x, y, z]               # tute EVA
+# shield = [x, y, z]              # schermo aggiuntivo del riparo, se presente
+# radiator = [x, y, z]            # radiatore della cabina
+# drive = [x, y, z]               # azionamento
+# payload = [x, y, z]             # carico scientifico
+# battery = [x, y, z]             # batteria
+# rps = [x, y, z]                 # solo se l'architettura lo prevede
+# pv = [x, y, z]                  # solo se l'architettura lo prevede
+# fuel_cell = [x, y, z]           # solo se l'architettura lo prevede
+
+# -----------------------------------------------------------------------------
+# Ingombro al lancio, MR-19
+# -----------------------------------------------------------------------------
+# [envelope]
+# length_m = 0.0                  # lunghezza in configurazione di lancio
+# width_m = 0.0                   # larghezza in configurazione di lancio
+# height_m = 0.0                  # altezza in configurazione di lancio
+# orientation = "perpendicolare"  # "perpendicolare" o "parallelo" all'asse della carenatura
