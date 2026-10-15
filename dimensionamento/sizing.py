@@ -80,7 +80,7 @@ def fixed_part(c, d) -> SimpleNamespace:
     r = d.radiation
     out.shelter = radiation.shelter_mass(r.shield, r.shelter_area, out.cons.water,
                                          r.water_fraction, r.other_shielding)
-    # Dosi informative (opzione accanto alla verifica di MR-16, Scheda, Radiazioni)
+    # Dosi informative, riportate accanto alla verifica di MR-16 (Scheda, Radiazioni)
     out.spe_dose_shelter = radiation.spe_dose(r.shield, env.spe_dose_unshielded, env.spe_dose_shelter,
                                               env.spe_shelter_shield)
     out.spe_dose_unshielded = env.spe_dose_unshielded
@@ -157,7 +157,7 @@ def mass_dependent(c, d, fx, mass: float) -> SimpleNamespace:
 
     # Batteria: energia utile, potenza di picco, DOD
     b = d.battery
-    out.p_peak_electric = out.p_peak + fx.p_service["drive"]
+    out.p_peak_electric = out.p_peak + fx.p_service["drive"]       # picco di trazione + servizio in guida
     out.battery_capacity, out.battery_criterion = power.battery_capacity(
         out.sim.max_deficit, b.dod_max, out.p_peak_electric,
         out.gen.rps + out.gen.fc_energy / duration, b.c_rate_max)

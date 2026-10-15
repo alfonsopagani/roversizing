@@ -8,7 +8,7 @@ riprogettato. Serve per i trade-off.
 Con ``frozen=True`` (opzione ``--congelato``) il rover resta quello
 dimensionato con il file di input e si verifica soltanto come si comporta al
 variare della chiave (verifica fuori progetto, ``sizing.off_design``): è la
-verifica a C_rr = 0,6 richiesta dal Design brief, che dice quale requisito
+verifica a C_rr = 0,6 richiesta dal Design brief, e mostra quale requisito
 viene violato per primo.
 
 In entrambi i casi la tabella riporta i requisiti NON SODDISFATTI.
@@ -23,9 +23,9 @@ from pathlib import Path
 
 from .constants import KWH
 from .inputs import SCHEMA, InputError, apply_override, validate
-from .requirements import KO, check_all
+from .requirements import KO, check_all, n
 from .mobility import max_speed
-from .report import GRID, INK, INK2, SERIES, Table, _pyplot, n
+from .report import GRID, INK, INK2, SERIES, Table, _pyplot
 from .sizing import SizingError, off_design, run
 
 

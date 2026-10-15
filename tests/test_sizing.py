@@ -316,10 +316,10 @@ def test_rps_declared_power(common, example):
 
 
 def test_italian_number_format():
-    from dimensionamento import report
-    assert report.n(1234.5, 1) == "1.234,5"
-    assert report.n(-1500) == "-1.500"
-    assert report.n(0.123, 3) == "0,123"
-    assert report.n(1e6) == "1.000.000"
-    assert report.n(None) == "-" and report.n(float("nan")) == "-"
-    assert requirements._n(7203.8) == "7.204"
+    n = requirements.n
+    assert n(1234.5, 1) == "1.234,5"
+    assert n(-1500) == "-1.500"
+    assert n(0.123, 3) == "0,123"
+    assert n(1e6) == "1.000.000"
+    assert n(7203.8) == "7.204"
+    assert n(None) == "-" and n(float("nan")) == "-"

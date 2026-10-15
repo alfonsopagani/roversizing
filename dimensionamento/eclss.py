@@ -104,7 +104,7 @@ def consumables(c, d) -> Consumables:
     duration = m.excursion_sols * c.environment.sol
     person_time = crew_time(m.crew, duration, m.emergency_crew, m.emergency_duration, ops.reserve)
     n_eva = eva_count(d)                                          # EVA dichiarate (MR-04: almeno 10)
-    eva_time = n_eva * m.eva_crew * m.eva_duration                # ore-persona di EVA [s]
+    eva_time = n_eva * m.eva_crew * m.eva_duration                # tempo-persona in EVA [persona·s]
     rho, w_o2 = cabin_gas(m.cabin_pressure, m.cabin_o2_fraction, x.cabin_temperature)
 
     o2_met = x.o2 * person_time * (1.0 - x.o2_recovery)

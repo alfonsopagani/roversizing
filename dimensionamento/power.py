@@ -1,4 +1,4 @@
-"""Potenza ed energia: carichi, generazione, accumulo, PMAD.
+"""Potenza ed energia: carichi, generazione, accumulo, rientri.
 
 Parametri: Scheda dati, sezioni *Potenza ed energia* (carichi di servizio,
 batterie, RPS, fotovoltaico, celle a combustibile) e *Vita a cicli delle
@@ -50,7 +50,10 @@ MODE_LABELS = {"drive": "guida", "eva": "EVA", "day": "sosta di giorno", "night"
 def service_loads(loads, margin: float) -> dict[str, float]:
     """Potenza dei carichi di servizio per modo, con il margine di MR-21 [W].
 
-        P_modo = (1 + 0,30) · P_modo,stimata
+        P_modo = (1 + f_P) · P_modo,stimata
+
+    f_P è il margine sui carichi di servizio (``power`` in [margins] di
+    common.toml, oggi 30%).
     """
     return {mode: (1.0 + margin) * getattr(loads, mode) for mode in MODES}
 
@@ -250,10 +253,11 @@ def battery_capacity(usable: float, dod: float, p_peak: float, p_continuous: flo
 
         C_energia = E_utile / DOD
         C_potenza = (P_picco - P_continua) / c_max      (c_max in 1/h)
-
-    P_continua è la potenza erogata con continuità dai generatori (RPS, celle a
-    combustibile).
         C = max(C_energia, C_potenza)
+
+    P_picco è la potenza elettrica di picco (picco di trazione più carichi di
+    servizio in guida); P_continua è la potenza erogata con continuità dai
+    generatori (RPS, potenza media delle celle a combustibile).
 
     Attenzione alle unità: con C in Wh e c_max in 1/h la potenza massima è
     c_max·C in W. Qui C è in J, quindi C_potenza = ΔP·3600 / c_max.

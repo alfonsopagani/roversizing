@@ -16,9 +16,11 @@ import sys
 from pathlib import Path
 
 from . import __version__
+from .constants import KWH
 from .inputs import InputError, apply_override, load_common, load_design, validate
-from .report import (format_markdown, format_text, n, plot_energy, plot_mass, print_report,
+from .report import (format_markdown, format_text, plot_energy, plot_mass, print_report,
                      requirements_table, write_outputs)
+from .requirements import n
 from .sensitivity import failed_requirements, linspace, plot_frozen, plot_sweep, sweep, sweep_table
 from .sizing import SizingError, off_design, run
 
@@ -39,7 +41,9 @@ def parse_args(argv=None):
     p.add_argument("--congelato", action="store_true",
                    help="con --sweep: verifica fuori progetto del rover dimensionato con il file di "
                         "input, invece di riprogettarlo a ogni valore")
-    p.add_argument("--out", metavar="CARTELLA", help="salva report.md e i CSV nella cartella")
+    p.add_argument("--out", metavar="CARTELLA",
+                   help="salva i risultati nella cartella (report.md e CSV, oppure la tabella della "
+                        "scansione o della verifica fuori progetto)")
     p.add_argument("--plot", action="store_true", help="salva anche i grafici PNG (richiede matplotlib)")
     p.add_argument("--version", action="version", version=f"roversizing {__version__} (pacchetto dimensionamento)")
     return p.parse_args(argv)
@@ -85,7 +89,7 @@ def main(argv=None) -> int:
                      f"File di input: {name}",
                      "Rover congelato come dimensionato dal file di input: massa "
                      f"{n(nominal.budget.total)} kg, picco di trazione {n(nominal.dep.p_peak / 1e3, 1)} kW, "
-                     f"batteria {n(nominal.dep.battery_capacity / 3.6e6, 1)} kWh.",
+                     f"batteria {n(nominal.dep.battery_capacity / KWH, 1)} kWh.",
                      f"Requisiti non soddisfatti nel progetto nominale: {failed_requirements(nominal)}",
                      f"Requisiti non soddisfatti fuori progetto: {failed_requirements(off)}", ""]
             table = requirements_table(off)

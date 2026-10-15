@@ -14,20 +14,12 @@ import re
 from pathlib import Path
 
 from . import mobility
-from .constants import HOUR, KWH
+from .constants import DAY, HOUR, KWH
 from .power import MODE_LABELS, MODES
-from .requirements import check_all
+from .requirements import check_all, n
 
 Table = tuple[str, list[str], list[list[str]]]
 NUMBER = re.compile(r"-?[\d.]+(,\d+)?")
-
-
-def n(x, nd: int = 0) -> str:
-    """Numero in formato italiano; '-' per valori mancanti o non finiti."""
-    if x is None or (isinstance(x, float) and not math.isfinite(x)):
-        return "-"
-    s = f"{x:,.{nd}f}"
-    return s.replace(",", "_").replace(".", ",").replace("_", ".")
 
 
 # ---------------------------------------------------------------------------
@@ -65,7 +57,7 @@ def mass_tables(res) -> list[Table]:
     ]
     total = b.total
     subs = [[k, n(v), n(v / total * 100, 1)] for k, v in sorted(b.by_subsystem.items(), key=lambda kv: -kv[1])]
-    subs.append([f"margine di sistema", n(b.system_margin), n(b.system_margin / total * 100, 1)])
+    subs.append(["margine di sistema", n(b.system_margin), n(b.system_margin / total * 100, 1)])
     return [("Budget di massa per voce",
              ["Voce", "Sottosistema", "Maturità", "Base [kg]", "MGA [%]", "Prevista [kg]", "Origine"], rows),
             ("Budget di massa: totali", ["Grandezza", "Massa [kg]"], summary),
@@ -96,7 +88,7 @@ def power_tables(res) -> list[Table]:
                ["totale escursione", n(e_tot / KWH, 1), "100,0"]]
     e_table = ("Budget di energia per escursione", ["Voce", "Energia [kWh]", "Quota [%]"], e_rows)
 
-    gen, sim, b = dep.gen, dep.sim, d.battery
+    gen, sim = dep.gen, dep.sim
     cap = dep.battery_capacity
     s_rows = [["Architettura", d.architecture.power, ""]]
     if gen.rps > 0:
@@ -150,7 +142,7 @@ def performance_table(res) -> Table:
     usable = dep.battery_capacity * d.battery.dod_max
     e_per_km = dep.e_traction / (dep.distance / 1e3)
     extra_km = max(0.0, usable - dep.sim.max_deficit) / e_per_km
-    person_days = fx.cons.person_time / (24 * HOUR)
+    person_days = fx.cons.person_time / DAY
     rows = [["Velocità massima in piano (potenza di picco)", n(v_flat * 3.6, 1), "km/h"],
             [f"Velocità massima sulla pendenza di {n(math.degrees(m.slope))}°", n(v_slope * 3.6, 1), "km/h"],
             ["Coppia per ruota motrice in pendenza, M_r", n(torque), "N·m"],
@@ -163,6 +155,8 @@ def performance_table(res) -> Table:
             ["Rientro in tempesta (MR-15): durata", n(res.storm.duration / HOUR, 1), "h"]]
     if res.cg:
         rows.append(["Baricentro x, y, z", ", ".join(n(v, 2) for v in res.cg), "m"])
+    # Se mancano alcune posizioni si elencano le voci senza posizione; se non ne è
+    # stata data nessuna (layout non ancora definito) la riga si omette.
     elif res.cg_missing and len(res.cg_missing) < sum(1 for it in res.budget.items if it.predicted > 0):
         rows.append(["Baricentro x, y, z: non calcolato, mancano le posizioni di",
                      "; ".join(res.cg_missing), ""])

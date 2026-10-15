@@ -2,8 +2,8 @@
 
 Lo strumento legge due file TOML:
 
-* ``common.toml`` (nel pacchetto): requisiti di missione e ambiente di Marte,
-  uguali per tutti i gruppi;
+* ``common.toml`` (nel pacchetto): requisiti di missione, ipotesi comuni,
+  margini e ambiente di Marte, uguali per tutti i gruppi;
 * il file del gruppo (per esempio ``progetti/esempio.toml``): tutte le scelte e
   le ipotesi di progetto.
 
@@ -13,8 +13,9 @@ Nel file di input il suffisso della chiave indica l'unità: ``v_flat_kmh = 5``
 è una velocità in km/h. Dopo la lettura ogni grandezza è convertita in SI e
 il suffisso viene tolto: nel codice ``mission.v_flat`` vale 5/3,6 m/s.
 La tabella ``UNIT_SUFFIXES`` elenca i suffissi riconosciuti e il fattore di
-conversione. Le chiavi senza suffisso sono adimensionali o sono numeri puri
-(conteggi, frazioni, rendimenti).
+conversione. Le chiavi senza suffisso sono numeri puri (conteggi, frazioni,
+rendimenti) oppure sono già in SI (per esempio ``insulation_conductivity``, in
+W/(m·K)).
 
 I dati letti diventano oggetti ``SimpleNamespace``: si accede ai valori con il
 punto, per esempio ``design.mobility.crr``.
@@ -25,7 +26,7 @@ import copy
 import hashlib
 import json
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -99,7 +100,7 @@ def si_name(key: str) -> tuple[str, float]:
 @dataclass
 class Spec:
     """Descrizione di una chiave: tipo, obbligatorietà, limiti, scelte ammesse."""
-    kind: str                       # float, int, str, bool, floats, ints, vec3
+    kind: str                       # float, int, str, bool, floats, ints, strs (lista di stringhe), vec3
     required: bool = True
     lo: float | None = None
     hi: float | None = None
@@ -247,7 +248,7 @@ SCHEMA: dict[str, dict[str, Spec]] = {
         "specific_mass_kg_kwh": F(),
         "maturity": MAT,
     },
-    "envelope": {                     # facoltativa: verifica di MR-19
+    "envelope": {                     # facoltativa nel file; senza, MR-19 risulta NON VERIFICATO
         "length_m": F(lo=0.1),
         "width_m": F(lo=0.1),
         "height_m": F(lo=0.1),

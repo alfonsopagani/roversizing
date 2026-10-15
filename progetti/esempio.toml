@@ -46,7 +46,7 @@ count = 4                         # ipotesi del gruppo: sol di solo trasferiment
 drive_h = 5                       # Scheda, Mobilità: 5 h di guida per sol (ipotesi DRA)
 eva_h = 0                         # nessuna EVA in questo sol tipo
 day_h = 7.35                      # sosta di giorno con equipaggio a bordo
-night_h = 12.3                    # ipotesi del gruppo: notte di circa 12 h (Design brief, Ambiente)
+night_h = 12.3                    # ipotesi del gruppo: notte di circa 12 h (Design brief; Scheda, Ambiente marziano)
 
 [[operations.sol_types]]
 name = "guida ed EVA"             # ipotesi del gruppo
@@ -80,13 +80,13 @@ night_kw = 2.6                    # ipotesi del gruppo
 v_return_kmh = 3                  # ipotesi del gruppo: velocità di rientro
 drive_per_sol_h = 10              # ipotesi del gruppo: ore di guida per sol durante il rientro
 load_kw = 3.0                     # ipotesi del gruppo: carichi di servizio con 4 persone
-soc_initial = 0.5                 # ipotesi del gruppo: frazione dell'energia utile disponibile all'inizio
+soc_initial = 0.5                 # ipotesi del gruppo: stato di carica all'inizio del rientro (frazione dell'energia utile)
 
 [storm]                           # MR-15: rientro con il 15% dell'irraggiamento
 v_return_kmh = 3                  # ipotesi del gruppo
 drive_per_sol_h = 10              # ipotesi del gruppo
 load_kw = 3.0                     # ipotesi del gruppo: carichi di servizio durante il rientro
-soc_initial = 0.8                 # ipotesi del gruppo: stato di carica all'inizio della tempesta
+soc_initial = 0.8                 # ipotesi del gruppo: stato di carica all'inizio del rientro (frazione dell'energia utile)
 
 # -----------------------------------------------------------------------------
 # Abitabilità e volumi
@@ -113,8 +113,8 @@ interior_areal_kg_m2 = 5          # Scheda, Ripartizione delle masse: PLR, 490 k
 insulation_thickness_m = 0.03     # ipotesi del gruppo
 insulation_density_kg_m3 = 100    # Scheda, Controllo termico: aerogel
 insulation_conductivity = 0.016   # Scheda, Controllo termico: W/(m K) in atmosfera marziana
-shell_maturity = "da_progettare"  # MR-21
-interior_maturity = "da_progettare"# MR-21: maturità dichiarata dal gruppo
+shell_maturity = "da_progettare"  # MR-21: maturità dichiarata dal gruppo
+interior_maturity = "da_progettare" # MR-21: maturità dichiarata dal gruppo
 insulation_maturity = "derivato"  # MR-21: maturità dichiarata dal gruppo
 fem_shell_kg = 0                  # MR-22: massa del guscio dal modello FEM (0 = stima areale)
 fem_nonmodeled_fraction = 0       # ipotesi del gruppo: struttura non modellata nel FEM (frazione)
@@ -148,7 +148,7 @@ o2_tank_ratio = 1.45              # Scheda, Equipaggio ed ECLSS: serbatoi in pre
 n2_tank_ratio = 1.93              # Scheda, Equipaggio ed ECLSS: serbatoi in pressione
 water_tank_ratio = 0.10           # ipotesi del gruppo: la Scheda esclude i serbatoi d'acqua
 cabin_temperature_k = 295         # ipotesi del gruppo
-tanks_maturity = "derivato"       # MR-21
+tanks_maturity = "derivato"       # MR-21: maturità dichiarata dal gruppo
 
 [eva_access]                      # MR-05
 suitport_evas = 10                # ipotesi del gruppo: tutte le EVA con suitport
@@ -200,7 +200,7 @@ cycle_count = [250, 500, 1000, 3000, 10000]    # Scheda, Vita a cicli delle batt
 [rps]
 specific_power_w_kg = 9.6         # Scheda, Potenza ed energia: RPS dinamico
 power_kw = 0                      # 0 = dimensionato sulla potenza media dell'escursione
-maturity = "da_progettare"        # TRL 3-4
+maturity = "da_progettare"        # MR-21: maturità dichiarata dal gruppo (RPS dinamico, TRL 3-4)
 
 [pv]
 specific_power_w_kg = 67          # Scheda, Potenza ed energia: ala GRC, τ = 1
