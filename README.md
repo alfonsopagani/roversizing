@@ -324,6 +324,10 @@ In VS Code, il pannello *Test* (icona della provetta) trova da solo i test in `t
 
 I test controllano le formule elementari su casi calcolati a mano, la lettura dei file e i messaggi d'errore, la convergenza del ciclo di massa e l'esecuzione della riga di comando. Lavorano sul file `tests/riferimento.toml`, una copia congelata di `progetti/esempio.toml` che non va modificata: i test ne confrontano i risultati con valori noti. L'esempio in `progetti/` e i file dei gruppi non sono usati dai test; un file di input si controlla eseguendolo con lo strumento. Vanno eseguiti dopo ogni modifica: un test che fallisce indica che la modifica ha cambiato un risultato che prima era verificato.
 
+## Riconoscimenti
+
+Lo strumento è stato sviluppato con l'assistenza di Claude (Anthropic). Le scelte di modello, i dati di riferimento e la verifica dei risultati sono dell'autore.
+
 ## Licenza
 
 Codice: licenza MIT. Documentazione ed esempi: licenza CC BY 4.0. Copyright © 2026 Alfonso Pagani, Politecnico di Torino. Vedi [LICENSE](LICENSE).
