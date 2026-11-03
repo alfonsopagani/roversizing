@@ -250,7 +250,7 @@ Gli esiti delle verifiche sono:
 
 Alcuni requisiti sono soddisfatti per costruzione, perché sono i dati di partenza del dimensionamento: la tabella riporta comunque i valori, che vanno presentati alla review.
 
-Un budget che non si chiude è un risultato, non un errore: va riportato, indicando che cosa servirebbe per chiuderlo (Design brief, Indicazioni di metodo).
+Un budget che non si chiude è un risultato, non un errore: va riportato, indicando che cosa servirebbe per chiuderlo.
 
 ### Quando il ciclo di massa non converge
 
