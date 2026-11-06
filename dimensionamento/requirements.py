@@ -1,16 +1,8 @@
 """Verifica dei requisiti quantitativi del Design brief.
 
-Ogni verifica restituisce il valore richiesto, il valore ottenuto e l'esito:
-    OK               requisito soddisfatto dal progetto calcolato
-    NON SODDISFATTO  requisito violato
-    NON VERIFICATO   il modello non ha i dati per verificarlo (per esempio
-                     MR-22 senza la massa del modello FEM)
-    INFORMATIVO      stima riportata accanto alla verifica, senza esito (per
-                     esempio la dose di MR-16, stimata con un modello molto
-                     semplificato)
-Alcuni requisiti sono soddisfatti per costruzione (per esempio la percorrenza
-di MR-08 è il dato con cui si calcola l'energia di trazione): la verifica
-riporta comunque i valori, perché vanno presentati alla review.
+Ogni verifica restituisce il valore richiesto, il valore ottenuto e l'esito.
+Verifiche: MODELLI.md, §10; significato degli esiti: README, *Come leggere il
+report*.
 """
 from __future__ import annotations
 

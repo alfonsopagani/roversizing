@@ -2,9 +2,6 @@
 
 Tutte le tabelle sono costruite una volta sola da ``build_tables`` come
 (titolo, intestazioni, righe) e poi stampate o salvate nei diversi formati.
-I numeri sono in formato italiano (virgola decimale, punto per le migliaia);
-i file CSV usano il punto e virgola come separatore, così si aprono
-direttamente in Excel con le impostazioni italiane.
 """
 from __future__ import annotations
 

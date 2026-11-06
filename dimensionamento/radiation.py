@@ -1,13 +1,7 @@
 """Protezione dalle radiazioni: riparo per l'evento solare (MR-16).
 
-Parametri: Scheda dati, sezione *Radiazioni* (schermatura raccomandata in
-g/cm^2 di acqua equivalente, uso dell'acqua di bordo come schermo).
-
-Il riparo è una zona della cabina per i due membri dell'equipaggio (MR-16),
-con uno schermo di spessore areale σ nelle direzioni non coperte dal suolo;
-la superficie A da schermare è dichiarata dal gruppo. Una parte dell'acqua di bordo,
-sistemata attorno al riparo, conta come schermo; il resto va aggiunto come
-massa dedicata.
+Parametri: Scheda dati, sezione *Radiazioni*. Equazioni e ipotesi:
+MODELLI.md, §5.
 """
 from __future__ import annotations
 
@@ -15,18 +9,9 @@ from dataclasses import dataclass
 
 
 def spe_dose(shield: float, dose_unshielded: float, dose_ref: float, shield_ref: float) -> float:
-    """Dose efficace stimata per l'evento solare di riferimento [mSv] (informativa).
+    """Dose efficace stimata per l'evento solare di riferimento [mSv], informativa (MODELLI §5).
 
-    La Scheda (sezione Radiazioni) riporta, per la superficie di Marte, la dose
-    senza schermatura D_0 e quella in un riparo di riferimento D_1 con
-    schermatura σ_1. Fra i due punti si interpola con una legge esponenziale:
-
-        D(σ) = D_0 · (D_1 / D_0)^(σ / σ_1)        per 0 ≤ σ ≤ σ_1
-
-    Oltre σ_1 i dati non permettono di estrapolare: si restituisce D_1, che è
-    quindi un limite superiore. La stima non tiene conto della quota del sito
-    né della schermatura offerta dal resto della cabina, e serve solo come
-    ordine di grandezza accanto alla verifica di MR-16.
+        D(σ) = D_0·(D_1/D_0)^(σ/σ_1)   per 0 ≤ σ ≤ σ_1;   D = D_1 per σ > σ_1
     """
     if shield <= 0.0:
         return dose_unshielded
@@ -45,14 +30,12 @@ class Shelter:
 
 def shelter_mass(areal_density: float, area: float, water: float,
                  water_fraction: float, other: float) -> Shelter:
-    """Massa dello schermo del riparo [kg].
+    """Massa dello schermo del riparo [kg] (MODELLI §5).
 
-        m_schermo = σ · A                      (σ in kg/m^2: 10 g/cm^2 = 100 kg/m^2)
-        m_agg     = max(0, m_schermo - f_w·m_H2O - m_altri)
+        m_schermo = σ·A,   m_agg = max(0, m_schermo - f_w·m_H2O - m_altri)
 
-    f_w è la frazione dell'acqua di bordo disponibile come schermo nel momento
-    più sfavorevole (per esempio a fine escursione); m_altri sono altri
-    materiali già a bordo che il gruppo riconfigura attorno al riparo.
+    σ in kg/m^2 (10 g/cm^2 = 100 kg/m^2). Lo schermo si copre prima con l'acqua,
+    poi con gli altri materiali.
     """
     required = areal_density * area
     from_water = min(required, water_fraction * water)

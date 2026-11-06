@@ -1,28 +1,8 @@
 """Potenza ed energia: carichi, generazione, accumulo, rientri.
 
-Parametri: Scheda dati, sezioni *Potenza ed energia* (carichi di servizio,
-batterie, RPS, fotovoltaico, celle a combustibile) e *Vita a cicli delle
-batterie*.
-Requisiti: MR-07 (cicli), MR-08 (percorrenza con le risorse a bordo),
-MR-12 (notte), MR-14 (emergenza), MR-15 (tempesta), MR-21 (+30% sui carichi
-di servizio).
-
-Struttura del modello
----------------------
-1. Il gruppo descrive l'escursione con alcuni "sol tipo" (per esempio un sol
-   di guida e un sol di EVA): per ciascuno, le ore passate in ogni modo
-   operativo (guida, giorno, EVA, notte) e quante volte si ripete.
-2. Ogni modo ha una potenza dei carichi di servizio, aumentata del margine di
-   MR-21. La trazione si aggiunge durante la guida.
-3. La generazione (RPS, fotovoltaico) è dimensionata in automatico oppure
-   dichiarata dal gruppo; le celle a combustibile forniscono l'energia
-   dell'intera escursione. L'ala fotovoltaica è ripiegata durante la guida e
-   non produce (Scheda, Potenza ed energia: ipotesi dello studio GRC); il
-   gruppo può dichiararla attiva in marcia, motivando la scelta e mettendo
-   a budget la struttura di supporto necessaria.
-4. La batteria è dimensionata simulando, fase per fase, il bilancio di
-   energia dell'escursione: la capacità utile necessaria è il massimo
-   "debito" di energia accumulato rispetto alla carica completa.
+Parametri: Scheda dati, sezioni *Potenza ed energia* e *Vita a cicli delle
+batterie*. Requisiti: MR-07, MR-08, MR-12, MR-14, MR-15, MR-21. Equazioni e
+ipotesi: MODELLI.md, §8.
 
 Architetture (``[architecture] power``):
     batterie            solo batteria, caricata alla base
@@ -48,12 +28,9 @@ MODE_LABELS = {"drive": "guida", "eva": "EVA", "day": "sosta di giorno", "night"
 # Carichi di servizio e profilo dell'escursione
 # ---------------------------------------------------------------------------
 def service_loads(loads, margin: float) -> dict[str, float]:
-    """Potenza dei carichi di servizio per modo, con il margine di MR-21 [W].
+    """Potenza dei carichi di servizio per modo, con il margine di MR-21 [W] (MODELLI §8).
 
-        P_modo = (1 + f_P) · P_modo,stimata
-
-    f_P è il margine sui carichi di servizio (``power`` in [margins] di
-    common.toml, oggi 30%).
+        P_modo = (1 + f_P)·P_modo,stimata
     """
     return {mode: (1.0 + margin) * getattr(loads, mode) for mode in MODES}
 
@@ -69,8 +46,7 @@ def sol_sequence(sol_types, order: list[str] | None = None) -> list:
     Se il gruppo dichiara ``sequence`` in [operations], si usa quella. In caso
     contrario i sol tipo si alternano nell'ordine in cui sono scritti nel file
     (guida, EVA, guida, EVA, ...) finché ciascuno ha esaurito il proprio
-    numero. La sequenza fa parte della ConOps: per esempio, raggruppare i sol
-    di guida all'inizio cambia la capacità richiesta alla batteria.
+    numero.
     """
     if order:
         by_name = {s.name: s for s in sol_types}
@@ -86,9 +62,9 @@ def sol_sequence(sol_types, order: list[str] | None = None) -> list:
 
 
 def service_energy(sol_types, p_service: dict[str, float]) -> dict[str, float]:
-    """Energia dei carichi di servizio per modo, sull'intera escursione [J].
+    """Energia dei carichi di servizio per modo, sull'intera escursione [J] (MODELLI §8).
 
-        E_modo = Σ_s n_s · t_modo,s · P_modo
+        E_modo = Σ_s n_s·t_modo,s·P_modo
     """
     return {mode: sum(s.count * getattr(s, mode) for s in sol_types) * p_service[mode]
             for mode in MODES}
@@ -103,11 +79,12 @@ def sol_energy(sol, p_service: dict[str, float], traction_rate: float) -> float:
 # Generazione
 # ---------------------------------------------------------------------------
 def pv_share(t0: float, t1: float, light: float) -> float:
-    """Quota dell'energia giornaliera dell'ala prodotta fra t0 e t1 dall'alba.
+    """Quota q dell'energia giornaliera dell'ala prodotta fra t0 e t1 dall'alba (MODELLI §8).
 
-    Con produzione sinusoidale fra alba e tramonto (durata t_luce):
         q(t0, t1) = [cos(π·t0/t_luce) - cos(π·t1/t_luce)] / 2
-    q(0, t_luce) = 1. Gli istanti oltre il tramonto sono riportati al tramonto.
+
+    Gli istanti oltre il tramonto sono riportati al tramonto; con t_luce ≤ 0
+    restituisce 0.
     """
     if light <= 0:
         return 0.0
@@ -116,11 +93,9 @@ def pv_share(t0: float, t1: float, light: float) -> float:
 
 
 def pv_collectable(sol_type, sol: float, deployed_while_driving: bool) -> float:
-    """Quota dell'energia giornaliera dell'ala raccolta in un sol tipo.
+    """Quota f_s dell'energia giornaliera dell'ala raccolta in un sol tipo (MODELLI §8).
 
-    La guida avviene all'inizio del giorno (fasi in ordine guida, EVA, sosta).
-    Con l'ala ripiegata in marcia si perde la quota prodotta durante la guida:
-        f_s = 1 - q(0, t_guida,s)
+        f_s = 1 - q(0, t_guida,s)      (ala ripiegata in marcia; f_s = 1 se attiva)
     """
     if deployed_while_driving:
         return 1.0
@@ -136,17 +111,13 @@ class Generation:
 
 def generation(arch: str, d, sol_types, p_service, traction_rate: float,
                e_total: float, duration: float, sol: float) -> Generation:
-    """Potenza dei generatori secondo l'architettura scelta.
+    """Potenza dei generatori secondo l'architettura scelta (MODELLI §8).
 
-    RPS dimensionato in automatico (power_kw = 0): potenza media dell'escursione
-        P_RPS = E_totale / t_escursione
-    Fotovoltaico dimensionato in automatico (power_kw = 0): in ogni sol tipo
-    l'ala produce l'energia del sol nelle ore in cui è aperta,
-        P_FV = max_s E_s / (h_sole · f_s)
-    con h_sole ore equivalenti di sole sull'intero periodo di luce e f_s la
-    quota dell'energia giornaliera raccolta nel sol (``pv_collectable``).
-    Celle a combustibile: forniscono l'energia dell'intera escursione.
-    Ibrido: potenze di RPS e fotovoltaico dichiarate dal gruppo.
+        P_RPS = (E_serv + E_tr) / t_escursione      (RPS, se power_kw = 0)
+        P_FV  = max_s E_s / (h_sole·f_s)            (fotovoltaico, se power_kw = 0)
+
+    Le celle a combustibile forniscono l'energia dell'intera escursione;
+    nell'architettura ibrida le potenze sono dichiarate.
     """
     gen = Generation()
     if arch == "rps":
@@ -189,30 +160,17 @@ class EnergySimulation:
 def simulate(sequence, p_service, traction_rate: float, gen: Generation,
              sol: float, sun_hours: float, fc_covers_loads: bool,
              pv_while_driving: bool = False) -> EnergySimulation:
-    """Bilancio di energia fase per fase e capacità utile della batteria.
+    """Bilancio di energia fase per fase e capacità utile della batteria (MODELLI §8).
 
-    Le fasi di luce si susseguono dall'alba nell'ordine guida, EVA, sosta di
-    giorno; poi viene la notte. Per ogni fase, fra gli istanti t0 e t1 contati
-    dall'alba:
-        E_carico = (P_modo + P_trazione) · Δt          (trazione solo in guida)
-        E_gen    = P_RPS·Δt + E_FV(t0, t1)
+        E_carico = (P_modo + P_tr)·Δt                (P_tr solo in guida)
+        E_gen    = P_RPS·Δt + P_FV·h_sole·q(t0, t1)  (E_FV = 0 in guida, salvo pv_while_driving)
         debito   = max(0, debito + E_carico - E_gen)
-    Con l'ala sempre aperta produrrebbe in un sol l'energia E_FV,sol = P_FV·h_sole,
-    con un andamento sinusoidale fra alba e tramonto (durata t_luce = t_sol - t_notte):
-        E_FV(t0, t1) = E_FV,sol · [cos(π·t0/t_luce) - cos(π·t1/t_luce)] / 2
-    Durante la guida l'ala è ripiegata e E_FV = 0, salvo che il gruppo la
-    dichiari attiva in marcia (``pv_while_driving``).
-    Il debito è l'energia mancante rispetto alla batteria carica; non può
-    essere negativo perché la batteria piena non accumula altro. La capacità
-    utile richiesta è il debito massimo. Il bilancio è fatto sull'energia di
-    ogni fase, non istante per istante.
 
-    Un ciclo di carica-scarica si chiude quando il debito torna a zero; se a
-    fine escursione il debito è positivo, la batteria si ricarica alla base e
-    anche questo conta come un ciclo.
-
-    Con le celle a combustibile i carichi medi sono coperti dalle celle e la
-    batteria serve solo per i picchi di potenza.
+    Le fasi di luce seguono l'ordine di ``MODES`` a partire dall'alba. La
+    capacità utile richiesta è il debito massimo. Un ciclo si chiude quando il
+    debito torna a zero; il debito residuo a fine escursione conta come un
+    ciclo (ricarica alla base). Con ``fc_covers_loads`` la generazione copre
+    ogni fase e il debito resta nullo.
     """
     deficit = peak = 0.0
     sim = EnergySimulation(0.0)
@@ -249,18 +207,11 @@ def simulate(sequence, p_service, traction_rate: float, gen: Generation,
 
 def battery_capacity(usable: float, dod: float, p_peak: float, p_continuous: float,
                      c_rate: float) -> tuple[float, str]:
-    """Capacità nominale della batteria [J] e criterio che la determina.
+    """Capacità nominale della batteria [J] e criterio che la determina (MODELLI §8).
 
-        C_energia = E_utile / DOD
-        C_potenza = (P_picco - P_continua) / c_max      (c_max in 1/h)
-        C = max(C_energia, C_potenza)
+        C = max(E_utile / DOD, (P_picco,el - P_continua) / c_max)
 
-    P_picco è la potenza elettrica di picco (picco di trazione più carichi di
-    servizio in guida); P_continua è la potenza erogata con continuità dai
-    generatori (RPS, potenza media delle celle a combustibile).
-
-    Attenzione alle unità: con C in Wh e c_max in 1/h la potenza massima è
-    c_max·C in W. Qui C è in J, quindi C_potenza = ΔP·3600 / c_max.
+    c_max è in 1/h e C in J: il termine di potenza è ΔP·3600 / c_max.
     """
     c_energy = usable / dod
     c_power = max(0.0, p_peak - p_continuous) * HOUR / c_rate
@@ -296,23 +247,15 @@ def return_trip(distance: float, speed: float, drive_per_sol: float, sol: float,
                 p_load: float, e_traction: float, gen: Generation, pv_factor: float,
                 sun_hours: float, stored: float, light: float = 0.0,
                 pv_while_driving: bool = False) -> Return:
-    """Bilancio di energia di un rientro alla base [J].
+    """Bilancio di energia di un rientro alla base [J] (MR-14, MR-15; MODELLI §8).
 
-        t_guida   = d / v
-        n         = ceil(t_guida / t_guida,sol) - 1        (sol completi prima dell'ultimo)
-        t_rientro = n·t_sol + (t_guida - n·t_guida,sol)   (si guida all'inizio di ogni sol)
-        E_rich  = P_servizio·t_rientro + E_trazione(d)
-        E_disp  = E_accumulata + P_RPS·t_rientro + E_FV
-        E_FV    = f·P_FV·h_sole · n·[1 - q(0, t_guida,sol)]       (ala ripiegata in marcia)
-        E_FV    = f·P_FV·h_sole · [n + q(0, t_guida - n·t_guida,sol)]   (ala attiva in marcia)
+        t_guida = d/v,   n = ceil(t_guida/t_g) - 1,   t_rientro = n·t_sol + (t_guida - n·t_g)
+        E_rich  = P_servizio·t_rientro + E_tr(d)
+        E_disp  = SOC·E_acc + P_RPS·t_rientro + E_FV
+        E_FV    = f·P_FV·h_sole·n·[1 - q(0, t_g)]               (ala ripiegata in marcia)
+        E_FV    = f·P_FV·h_sole·[n + q(0, t_guida - n·t_g)]     (ala attiva in marcia)
 
-    Si guida dall'alba; nei sol completi l'ala produce nella parte di giorno
-    che segue la guida, nell'ultimo sol il rientro termina all'arrivo. q è la
-    quota sinusoidale dell'energia giornaliera (``pv_share``), t_luce la durata
-    del periodo di luce.
-    f è la frazione dell'irraggiamento disponibile (0,15 in tempesta, MR-15;
-    1 negli altri casi); E_accumulata è l'energia utile a bordo all'inizio del
-    rientro (batteria e reagenti), dichiarata dal gruppo come stato di carica.
+    ``p_load`` comprende già il margine di MR-21; ``stored`` è SOC·E_acc.
     """
     t_drive = distance / speed
     n_full = max(0, math.ceil(t_drive / drive_per_sol - 1e-9) - 1)

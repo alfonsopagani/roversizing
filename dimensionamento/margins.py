@@ -1,15 +1,10 @@
-"""Margini di massa secondo MR-21.
+"""Margini di massa secondo MR-21 (MODELLI §2).
 
-    massa prevista       = Σ (1 + MGA_i) · m_base,i
-    margine di sistema   = f_sis · Σ m_base,i
+    massa prevista       = Σ (1 + MGA_i)·m_base,i
+    margine di sistema   = f_sis·Σ m_base,i
     massa totale         = masse fisse + massa prevista + margine di sistema
 
-Le somme sono estese alle voci con margine. L'MGA dipende dalla maturità
-dichiarata per ciascuna voce (da progettare, derivato da prodotti esistenti
-con modifiche, esistente); i valori dell'MGA e del margine di sistema f_sis
-sono in [margins] di common.toml (oggi 20%, 10%, 5% e 15%). Carico
-scientifico, equipaggio, tute e consumabili sono masse fisse, senza margini.
-Le definizioni sono nella Scheda dati, sezione Margini di massa.
+I valori di MGA e f_sis sono in [margins] di common.toml.
 """
 from __future__ import annotations
 

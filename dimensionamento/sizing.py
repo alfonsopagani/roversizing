@@ -1,25 +1,11 @@
 """Ciclo di massa: chiusura della spirale di massa con un'iterazione a punto fisso.
 
-Molte voci dipendono dalla massa totale del rover: la potenza di trazione, e
-quindi l'azionamento e il sistema di potenza, e le voci dichiarate come
-frazione della massa totale (per esempio telaio e ruote). La massa totale,
-però, è la somma delle voci. Si cerca quindi il valore m* tale che
+    m* = F(m*),   m_(k+1) = F(m_k)
 
-    m* = F(m*)
-
-dove F(m) è la massa totale, margini compresi, calcolata supponendo che il
-rover pesi m. Si parte da un valore iniziale e si itera
-
-    m_(k+1) = F(m_k)
-
-fino a quando la differenza fra due iterazioni è minore della tolleranza.
-
-Convergenza. Vicino alla soluzione F(m) ≈ A + k·m, dove k = dF/dm è la
-"somma delle frazioni": la parte di ogni kg aggiunto al rover che ritorna
-come massa di azionamento, potenza, telaio e così via, margini compresi. Se
-k < 1 l'iterazione converge a m* = A / (1 - k) e 1/(1 - k) è il fattore di
-crescita della massa. Se k ≥ 1 non esiste una soluzione finita: ogni kg in
-più ne richiede almeno un altro, e la massa diverge.
+F(m) è la massa totale, margini compresi, di un rover che si suppone pesi m.
+La somma delle frazioni k = dF/dm decide la convergenza: con k < 1
+l'iterazione converge, con k ≥ 1 la massa diverge. Equazioni e ipotesi:
+MODELLI.md, §1.
 """
 from __future__ import annotations
 
@@ -113,13 +99,7 @@ def fixed_part(c, d) -> SimpleNamespace:
 # Parte dipendente dalla massa totale: trazione e sistema di potenza
 # ---------------------------------------------------------------------------
 def traction_distance(c, d) -> float:
-    """Distanza su cui si calcola l'energia di trazione [m].
-
-        d = max(d_MR-08, t_guida · v_media)
-
-    È la percorrenza pianificata dalla ConOps (ore di guida per velocità
-    media), con il minimo di MR-08 (100 km).
-    """
+    """Distanza su cui si calcola l'energia di trazione [m] (MODELLI §7): d = max(d_MR-08, t_guida·v_media)."""
     planned = power.drive_time(d.operations.sol_types) * d.operations.v_mean
     return max(c.mission.distance, planned)
 
@@ -311,9 +291,10 @@ def close_mass_loop(c, d, fx=None, start: float | None = None,
 # Esecuzione completa
 # ---------------------------------------------------------------------------
 def return_cases(c, d, dep, mass: float) -> tuple[power.Return, power.Return]:
-    """Rientri dal punto più lontano: emergenza con quattro persone (MR-14) e
-    tempesta di polvere (MR-15). La salita del rientro è la quota della salita
-    cumulata proporzionale alla distanza."""
+    """Rientri dal punto più lontano (MODELLI §8): emergenza con quattro persone
+    (MR-14) e tempesta di polvere (MR-15). La salita del rientro è la quota
+    della salita cumulata proporzionale alla distanza.
+    """
     m, env, mob, ops = c.mission, c.environment, d.mobility, d.operations
     climb = ops.climb * m.max_radius / traction_distance(c, d)
     stored_full = dep.battery_capacity * d.battery.dod_max + dep.gen.fc_energy
@@ -383,16 +364,11 @@ def run(c, d) -> Result:
 # Verifica fuori progetto (progetto congelato)
 # ---------------------------------------------------------------------------
 def off_design(c, d_nominal, d_changed) -> tuple[Result, Result]:
-    """Verifica fuori progetto: il rover dimensionato con ``d_nominal`` opera
-    nelle condizioni di ``d_changed`` (per esempio C_rr = 0,6).
+    """Verifica fuori progetto (MODELLI §10): il rover dimensionato con
+    ``d_nominal`` opera nelle condizioni di ``d_changed``.
 
-    Restano quelli del progetto nominale: massa totale e budget di massa,
-    potenza di trazione installata, capacità della batteria, generazione (RPS,
-    ala, reagenti delle celle). Con i dati di ``d_changed`` si ricalcolano:
-    energia di trazione, carichi di servizio, bilancio di energia
-    dell'escursione con la batteria installata, rientri di MR-14 e MR-15.
-    Le verifiche dei requisiti dicono allora quali requisiti il progetto
-    congelato non rispetta più.
+    Restituisce i risultati del progetto nominale e quelli fuori progetto.
+    L'architettura di potenza non si può cambiare: si solleva SizingError.
     """
     if d_changed.architecture.power != d_nominal.architecture.power:
         raise SizingError("verifica fuori progetto: l'architettura di potenza non si può cambiare "

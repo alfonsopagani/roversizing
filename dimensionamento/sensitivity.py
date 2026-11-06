@@ -1,20 +1,8 @@
-"""Studi di sensitività: variazione di un parametro alla volta.
+"""Studi di sensitività: variazione di un parametro alla volta (opzioni --sweep e
+--congelato, descritte nel README).
 
-Si ripete il dimensionamento completo, ciclo di massa compreso, per una serie
-di valori di una sola chiave del file di input (per esempio ``mobility.crr``
-fra 0,1 e 0,6), lasciando invariato tutto il resto: a ogni valore il rover è
-riprogettato. Serve per i trade-off.
-
-Con ``frozen=True`` (opzione ``--congelato``) il rover resta quello
-dimensionato con il file di input e si verifica soltanto come si comporta al
-variare della chiave (verifica fuori progetto, ``sizing.off_design``): è la
-verifica a C_rr = 0,6 richiesta dal Design brief, e mostra quale requisito
-viene violato per primo.
-
-In entrambi i casi la tabella riporta i requisiti NON SODDISFATTI.
-
-I valori si danno nelle unità del file di input (per esempio kW per
-``loads.day_kw``).
+Per ogni valore della chiave si ripete il dimensionamento completo (``sizing.run``)
+oppure, con ``frozen=True``, la verifica fuori progetto (``sizing.off_design``).
 """
 from __future__ import annotations
 

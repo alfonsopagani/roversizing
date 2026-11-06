@@ -2,9 +2,9 @@
 
 Strumento di calcolo per l'esercitazione E2 del corso *Progetto di Velivoli Aerospaziali* (Politecnico di Torino): dimensionamento di ordine ridotto di un rover pressurizzato per l'esplorazione di Marte.
 
-Lo strumento stima masse, volumi, potenza ed energia del rover a partire dalle scelte del gruppo, chiude numericamente la spirale di massa e verifica i requisiti quantitativi del Design brief. Non sceglie l'architettura e non contiene una soluzione: calcola le conseguenze delle ipotesi che il gruppo dichiara.
+Lo strumento stima masse, volumi, potenza ed energia del rover a partire dalle scelte del gruppo, chiude numericamente la spirale di massa e verifica i requisiti quantitativi del Design brief.
 
-Il codice fa parte del materiale didattico. È scritto per essere letto: ogni funzione riporta nella docstring l'equazione usata, le unità e la sezione della *Scheda dati di riferimento* da cui vengono i parametri. Le equazioni sono raccolte in [MODELLI.md](MODELLI.md).
+Il codice fa parte del materiale didattico. È scritto per essere letto: ogni modulo indica la sezione della *Scheda dati di riferimento* da cui vengono i parametri; ogni funzione riporta l'equazione usata e le unità, con il rimando alla sezione di [MODELLI.md](MODELLI.md), che raccoglie equazioni e ipotesi.
 
 **Indice**
 
@@ -55,7 +55,7 @@ Lo strumento non va installato come pacchetto: basta scaricare la cartella ed es
 Lo strumento si può usare da qualunque terminale. Con [Visual Studio Code](https://code.visualstudio.com/) si hanno in più l'avvio con un tasto, il debugger e il pannello dei test; la cartella `.vscode/` contiene già le configurazioni.
 
 1. Installare VS Code e, dal pannello *Estensioni* (Ctrl+Shift+X), l'estensione **Python** di Microsoft. Il debugger (*Python Debugger*) si installa insieme.
-2. *File → Apri cartella…* e scegliere la cartella principale del repository, quella che contiene `README.md` e `pyproject.toml`. Va aperta la cartella principale e non una sottocartella: le configurazioni e i percorsi partono da lì.
+2. *File → Apri cartella…* e scegliere la cartella principale del repository, quella che contiene `README.md` e `pyproject.toml`.
 3. Ctrl+Shift+P → *Python: Seleziona interprete* → scegliere il Python 3.11 o successivo installato.
 4. Il terminale integrato (*Terminale → Nuovo terminale*) si apre già nella cartella principale: lì si danno i comandi di questo README.
 
@@ -125,7 +125,7 @@ Ogni valore deve avere accanto un commento con la sua origine:
 - una sezione della Scheda dati: `# Scheda, Mobilità`;
 - un'ipotesi: `# ipotesi del gruppo: ...`, seguita da una breve motivazione.
 
-Il suffisso del nome indica l'unità: `v_mean_kmh` è in km/h, `power_kw` in kW, `climb_m` in metri, `shield_g_cm2` in g/cm². Lo strumento converte tutto in unità SI al momento della lettura. Le chiavi senza suffisso sono adimensionali (frazioni, rendimenti, conteggi).
+Il suffisso del nome indica l'unità: `v_mean_kmh` è in km/h, `power_kw` in kW, `climb_m` in metri, `shield_g_cm2` in g/cm². Lo strumento converte tutto in unità SI al momento della lettura. Le chiavi senza suffisso sono numeri puri (frazioni, rendimenti, conteggi) oppure sono già in unità SI, come `insulation_conductivity` in W/(m·K).
 
 ### Sezioni del file
 
@@ -322,7 +322,7 @@ python -m pytest
 
 In VS Code, il pannello *Test* (icona della provetta) trova da solo i test in `tests/` e li esegue con un clic.
 
-I test controllano le formule elementari su casi calcolati a mano, la lettura dei file e i messaggi d'errore, la convergenza del ciclo di massa e l'esecuzione della riga di comando. Lavorano sul file `tests/riferimento.toml`, una copia congelata di `progetti/esempio.toml` che non va modificata: i test ne confrontano i risultati con valori noti. L'esempio in `progetti/` e i file dei gruppi non sono usati dai test; un file di input si controlla eseguendolo con lo strumento. Vanno eseguiti dopo ogni modifica: un test che fallisce indica che la modifica ha cambiato un risultato che prima era verificato.
+I test controllano le formule elementari su casi calcolati a mano, la lettura dei file e i messaggi d'errore, la convergenza del ciclo di massa e l'esecuzione della riga di comando. Lavorano sul file `tests/riferimento.toml`, una copia congelata di `progetti/esempio.toml` che non va modificata: i test ne confrontano i risultati con valori noti.
 
 ## Riconoscimenti
 

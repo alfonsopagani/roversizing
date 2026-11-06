@@ -2,9 +2,7 @@
 # File di input di esempio per dimensionamento
 # =============================================================================
 # Questo file descrive un rover di ESEMPIO. I valori NON sono ottimizzati e non
-# rappresentano una soluzione consigliata: servono a mostrare il formato e a
-# far girare lo strumento. Ogni gruppo copia questo file, lo rinomina e lo
-# modifica con le proprie scelte.
+# rappresentano una soluzione consigliata.
 #
 # Regole:
 # - ogni valore ha accanto un commento con la sua origine: un requisito (MR-xx),
