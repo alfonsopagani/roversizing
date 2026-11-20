@@ -8,11 +8,15 @@ All'interno del codice tutte le grandezze sono in unità SI (kg, m, s, W, J, Pa,
 
 Diverse voci dipendono dalla massa totale m del rover: la potenza di trazione, e quindi l'azionamento e il sistema di potenza, e le voci dichiarate come frazione della massa totale. Si cerca la massa che soddisfa
 
-  m* = F(m*)
+```text
+m* = F(m*)
+```
 
 dove F(m) è la massa totale a pieno carico, margini compresi, calcolata supponendo che il rover pesi m. L'iterazione a punto fisso
 
-  m₍ₖ₊₁₎ = F(mₖ)
+```text
+m₍ₖ₊₁₎ = F(mₖ)
+```
 
 parte dal limite di MR-20 e si arresta quando |m₍ₖ₊₁₎ − mₖ| < 0,1 kg.
 
@@ -22,9 +26,11 @@ Vicino alla soluzione F(m) ≈ A + k·m. La pendenza k = dF/dm è la *somma dell
 
 Massa totale a pieno carico:
 
-  massa prevista       = Σᵢ (1 + MGAᵢ) · m_base,i
-  margine di sistema   = f_sis · Σᵢ m_base,i
-  massa totale         = masse fisse + massa prevista + margine di sistema
+```text
+massa prevista       = Σᵢ (1 + MGAᵢ) · m_base,i
+margine di sistema   = f_sis · Σᵢ m_base,i
+massa totale         = masse fisse + massa prevista + margine di sistema
+```
 
 dove le somme sono estese alle voci con margine, MGAᵢ dipende dalla maturità dichiarata (20% `da_progettare`, 10% `derivato`, 5% `esistente`) e f_sis = 15% è il margine di sistema.
 
@@ -36,7 +42,9 @@ Parametri: Scheda, *Abitabilità e volumi*.
 
 Volume pressurizzato richiesto:
 
-  V_p = NHV / f_NHV + V_stivaggio + V_altro
+```text
+V_p = NHV / f_NHV + V_stivaggio + V_altro
+```
 
 dove NHV è il volume abitabile netto (`nhv_m3`), f_NHV il rapporto fra volume abitabile e pressurizzato (`nhv_fraction`), V_stivaggio la capacità di stivaggio interna (`stowage_m3`) e V_altro altri volumi pressurizzati, per esempio un airlock interno (`other_pressurized_m3`).
 
@@ -47,7 +55,9 @@ Cabina cilindrica di raggio R = D/2 con due fondi:
 
 Se la lunghezza non è dichiarata (`length_m = 0`), la lunghezza del tratto cilindrico si ricava dal volume e da questa la superficie del guscio:
 
-  L_c = (V_p − V_fondi) / (π·R²),   A = π·D·L_c + A_fondi
+```text
+L_c = (V_p − V_fondi) / (π·R²),   A = π·D·L_c + A_fondi
+```
 
 Se la lunghezza è dichiarata, si usa quella e si confronta il volume risultante con quello richiesto.
 
@@ -61,7 +71,9 @@ Parametri: Scheda, *Equipaggio ed ECLSS*. Requisiti: MR-03, MR-04, MR-05, MR-13,
 
 Tempo-persona da rifornire:
 
-  T = n·t_esc + (n_em − n)·t_em + n·t_riserva
+```text
+T = n·t_esc + (n_em − n)·t_em + n·t_riserva
+```
 
 dove n = 2 persone (MR-01), t_esc = 14 sol (MR-03), n_em = 4 persone per t_em = 72 h (MR-14) e t_riserva è una riserva facoltativa (`reserve_d`).
 
@@ -69,17 +81,21 @@ I consumi BVAD sono per giorno terrestre; l'escursione dura 14 sol di 24 h 39 mi
 
 Miscela della cabina (MR-13):
 
-  M = x·M_O₂ + (1 − x)·M_N₂,   ρ = p·M/(R·T),   w_O₂ = x·M_O₂/M
+```text
+M = x·M_O₂ + (1 − x)·M_N₂,   ρ = p·M/(R·T),   w_O₂ = x·M_O₂/M
+```
 
 dove x = 0,34 è la frazione molare di O₂, M la massa molare della miscela, ρ la sua densità e w_O₂ la frazione in massa di O₂.
 
 Consumabili:
 
-  O₂ = r_O₂·T·(1 − g_O₂) + N_EVA·n_EVA·(r_O₂,EVA·t_EVA + m_O₂,fisso) + w_O₂·(m_perdite + m_cicli)
-  N₂ = (1 − w_O₂)·(m_perdite + m_cicli)
-  H₂O = [(r_potabile + r_igiene)·T + N_EVA·n_EVA·r_H₂O,EVA·t_EVA]·(1 − g_H₂O)
-  cibo = r_cibo·T + N_EVA·n_EVA·r_cibo,EVA·t_EVA
-  assorbitore di CO₂ = k_CO₂ · r_CO₂·T
+```text
+O₂ = r_O₂·T·(1 − g_O₂) + N_EVA·n_EVA·(r_O₂,EVA·t_EVA + m_O₂,fisso) + w_O₂·(m_perdite + m_cicli)
+N₂ = (1 − w_O₂)·(m_perdite + m_cicli)
+H₂O = [(r_potabile + r_igiene)·T + N_EVA·n_EVA·r_H₂O,EVA·t_EVA]·(1 − g_H₂O)
+cibo = r_cibo·T + N_EVA·n_EVA·r_cibo,EVA·t_EVA
+assorbitore di CO₂ = k_CO₂ · r_CO₂·T
+```
 
 dove r sono i consumi per persona e per unità di tempo, g_O₂ e g_H₂O i gradi di rigenerazione (`o2_recovery`, `water_recovery`), N_EVA il numero di EVA dichiarato dal gruppo (suitport + airlock, almeno 10 per MR-04), n_EVA = 2 persone per EVA, t_EVA = 8 h (durata massima di MR-04), m_perdite la perdita della cabina per la durata dell'escursione, m_cicli il gas perso nei cicli di uscita (vedi sotto) e k_CO₂ (`co2_sorbent_ratio`) la massa di assorbitore consumato per kg di CO₂, contenitori compresi.
 
@@ -87,14 +103,18 @@ Per l'idrossido di litio il valore teorico di k_CO₂ è 1/0,92 kg/kg (Scheda), 
 
 Gas perso nei cicli di uscita (MR-05):
 
-  suitport: m_cicli = N_EVA,sp · n_EVA · c_sp · m_ciclo
-  airlock:  m_cicli = N_EVA,al · c_al · f · V_gas · ρ
+```text
+suitport: m_cicli = N_EVA,sp · n_EVA · c_sp · m_ciclo
+airlock:  m_cicli = N_EVA,al · c_al · f · V_gas · ρ
+```
 
 dove c è il numero di cicli per EVA, m_ciclo il gas perso per persona e per ciclo, f la frazione del gas dell'airlock persa a ogni ciclo e V_gas il volume di gas libero dell'airlock.
 
 Serbatoi:
 
-  m_serbatoi = k_O₂·m_O₂ + k_N₂·m_N₂ + k_H₂O·m_H₂O
+```text
+m_serbatoi = k_O₂·m_O₂ + k_N₂·m_N₂ + k_H₂O·m_H₂O
+```
 
 dove k_O₂ = 1,45 e k_N₂ = 1,93 sono i fattori dei serbatoi in pressione (Scheda) e k_H₂O è un'ipotesi del gruppo.
 
@@ -106,7 +126,9 @@ Parametri: Scheda, *Radiazioni*.
 
 Massa dello schermo del riparo e quota da aggiungere:
 
-  m_schermo = σ · A,   m_agg = max(0, m_schermo − f_w·m_H₂O − m_altri)
+```text
+m_schermo = σ · A,   m_agg = max(0, m_schermo − f_w·m_H₂O − m_altri)
+```
 
 dove σ è la schermatura in kg/m² (10 g/cm² = 100 kg/m²), A la superficie del riparo per i due membri dell'equipaggio da schermare nelle direzioni non coperte dal suolo (MR-16), f_w la frazione dell'acqua di bordo disponibile come schermo nel momento più sfavorevole e m_altri altri materiali di bordo riconfigurati.
 
@@ -114,7 +136,9 @@ La verifica di MR-16 confronta σ con la schermatura minima del requisito (10 g/
 
 Accanto alla verifica, a titolo informativo, lo strumento stima la dose efficace dall'evento solare di riferimento interpolando fra i due valori della Scheda per la superficie di Marte:
 
-  D(σ) = D₀ · (D₁/D₀)^(σ/σ₁)   per σ ≤ σ₁;   D = D₁ per σ > σ₁
+```text
+D(σ) = D₀ · (D₁/D₀)^(σ/σ₁)   per σ ≤ σ₁;   D = D₁ per σ > σ₁
+```
 
 dove D₀ è la dose senza schermatura e D₁ la dose nel riparo di riferimento, di schermatura σ₁ (dati in `common.toml`).
 
@@ -126,13 +150,17 @@ Parametri: Scheda, *Struttura*. Requisito: MR-22.
 
 Finché il modello FEM non è disponibile, le masse della cabina sono stimate dalla superficie:
 
-  m_guscio = A·w_guscio,   m_interni = A·w_interni,   m_isolamento = A·t_isol·ρ_isol
+```text
+m_guscio = A·w_guscio,   m_interni = A·w_interni,   m_isolamento = A·t_isol·ρ_isol
+```
 
 dove A è la superficie del guscio, w_guscio e w_interni le masse per unità di superficie di guscio e interni (`shell_areal_kg_m2`, `interior_areal_kg_m2`), t_isol e ρ_isol spessore e densità dell'isolamento.
 
 Se è disponibile la massa del guscio dal modello FEM del gruppo (MR-22):
 
-  m_guscio = m_FEM · (1 + f_non modellata)
+```text
+m_guscio = m_FEM · (1 + f_non modellata)
+```
 
 dove f_non modellata (`fem_nonmodeled_fraction`) è la quota di struttura non modellata nel FEM (giunzioni, bulloneria, telai delle aperture, struttura secondaria).
 
@@ -148,17 +176,23 @@ Parametri: Scheda, *Mobilità*. Requisiti: MR-08, MR-10, MR-11. Ipotesi comuni d
 
 Potenza elettrica assorbita dalla trazione su una pendenza θ alla velocità v:
 
-  P = (C_rr·cosθ + sinθ) · m·g · v / η
+```text
+P = (C_rr·cosθ + sinθ) · m·g · v / η
+```
 
 dove m è la massa a pieno carico e η il rendimento complessivo della catena di trazione.
 
 Potenza di picco, sui casi di MR-10 e MR-11:
 
-  P_picco = max[P(0, 5 km/h), P(15°, 1 km/h)]
+```text
+P_picco = max[P(0, 5 km/h), P(15°, 1 km/h)]
+```
 
 Energia di trazione per l'escursione:
 
-  E_tr = (1 + k_man) · (C_rr·m·g·d + m·g·Δh) / η,   d = max(100 km, t_guida·v_media)
+```text
+E_tr = (1 + k_man) · (C_rr·m·g·d + m·g·Δh) / η,   d = max(100 km, t_guida·v_media)
+```
 
 dove d è la percorrenza pianificata dalla ConOps (ore di guida per velocità media), con il minimo di MR-08, Δh la salita cumulata e k_man il margine per manovre e percorso non rettilineo.
 
@@ -168,9 +202,11 @@ Massa dell'azionamento (motori, riduttori, controllori): m_az = k_az·P_picco, c
 
 Grandezze informative e di verifica:
 
-  coppia per ruota motrice   M_r = (C_rr·cosθ + sinθ)·m·g·R / n,   R = D_ruota/2, n ruote motrici
-  velocità raggiungibile     v = P_picco·η / [(C_rr·cosθ + sinθ)·m·g]
-  angolo di ribaltamento     tanφ = (b/2) / h_G
+```text
+coppia per ruota motrice   M_r = (C_rr·cosθ + sinθ)·m·g·R / n,   R = D_ruota/2, n ruote motrici
+velocità raggiungibile     v = P_picco·η / [(C_rr·cosθ + sinθ)·m·g]
+angolo di ribaltamento     tanφ = (b/2) / h_G
+```
 
 dove b è la carreggiata e h_G l'altezza del baricentro: quella calcolata dalle posizioni, se tutte le voci ne hanno una, altrimenti quella dichiarata (`cg_height_m`).
 
@@ -180,11 +216,13 @@ Motori e riduttori si dimensionano anche sulla coppia in pendenza, che il modell
 
 Parametri: Scheda, *Potenza ed energia* e *Vita a cicli delle batterie*. Requisiti: MR-07, MR-08, MR-12, MR-14, MR-15, MR-21.
 
-**Profilo dell'escursione.** Il gruppo descrive l'escursione con alcuni sol tipo: per ciascuno le ore di guida, EVA, sosta di giorno e notte (che sommano a un sol) e il numero di ripetizioni (che sommano a 14 sol). I sol si succedono nella sequenza dichiarata in `sequence` oppure, in mancanza, alternando i sol tipo nell'ordine del file.
+**Profilo dell'escursione.** Il gruppo descrive l'escursione con alcuni sol tipo: per ciascuno le ore di guida, EVA e sosta di giorno, le ore di guida e sosta di notte (che sommano a un sol) e il numero di ripetizioni (che sommano a 14 sol). La guida notturna, autonoma, è facoltativa. I sol si succedono nella sequenza dichiarata in `sequence` oppure, in mancanza, alternando i sol tipo nell'ordine del file.
 
 **Carichi di servizio.** Per ogni modo operativo
 
-  P_modo = (1 + f_P) · P_modo,stimata
+```text
+P_modo = (1 + f_P) · P_modo,stimata
+```
 
 dove f_P = 30% è il margine sui carichi di servizio (MR-21).
 
@@ -195,7 +233,9 @@ L'energia di servizio dell'escursione è E_serv = Σ_modi Σ_s n_s·t_modo,s·P_
 - RPS: se la potenza non è dichiarata, P_RPS = (E_serv + E_tr) / t_escursione.
 - Fotovoltaico: l'ala è ripiegata durante la guida e non produce (Scheda, *Potenza ed energia*: ipotesi dello studio GRC). Il gruppo può dichiararla attiva in marcia (`deployed_while_driving = true`), motivando la scelta e mettendo a budget la struttura aggiuntiva. Se la potenza non è dichiarata, in ogni sol tipo l'ala deve produrre l'energia del sol nelle ore in cui è aperta:
 
+  ```text
   P_FV = max_s E_s / (h_sole · f_s),   f_s = 1 − q(0, t_guida,s)
+  ```
 
   dove E_s è l'energia del sol tipo s, h_sole le ore equivalenti di sole riferite all'intero periodo di luce (P_FV·h_sole è l'energia di un giorno con l'ala sempre aperta), f_s la quota dell'energia giornaliera raccolta (la guida è all'inizio del giorno; con l'ala attiva in marcia f_s = 1) e q la quota sinusoidale definita più sotto.
 
@@ -203,39 +243,53 @@ L'energia di servizio dell'escursione è E_serv = Σ_modi Σ_s n_s·t_modo,s·P_
 - Celle a combustibile: forniscono E_serv + E_tr; m_FC = m_fissa + k·E (parte fissa per stack ed elettronica, parte proporzionale per reagenti e serbatoi).
 - Ibrido: potenze di RPS e fotovoltaico dichiarate dal gruppo.
 
-**Simulazione dell'escursione e batteria.** Il bilancio di energia si segue fase per fase. Le fasi di luce si susseguono dall'alba nell'ordine guida, EVA, sosta di giorno; poi viene la notte. Per una fase fra gli istanti t₀ e t₁ dall'alba:
+**Simulazione dell'escursione e batteria.** Il bilancio di energia si segue fase per fase. Le fasi di luce si susseguono dall'alba nell'ordine guida, EVA, sosta di giorno; poi la notte, nell'ordine guida e sosta. Per una fase fra gli istanti t₀ e t₁ dall'alba:
 
-  E_carico = (P_modo + P_tr)·Δt
-  E_gen    = P_RPS·Δt + E_FV(t₀, t₁)
-  debito   = max(0, debito + E_carico − E_gen)
+```text
+E_carico = (P_modo + P_tr)·Δt
+E_gen    = P_RPS·Δt + E_FV(t₀, t₁)
+debito   = max(0, debito + E_carico − E_gen)
+```
 
 dove Δt = t₁ − t₀, P_tr compare solo nelle fasi di guida e il debito è l'energia mancante rispetto alla batteria carica.
 
 Con l'ala sempre aperta la produzione di un sol sarebbe E_FV,sol = P_FV·h_sole, con andamento sinusoidale fra alba e tramonto (durata t_luce):
 
-  E_FV(t₀, t₁) = E_FV,sol · q(t₀, t₁),   q(t₀, t₁) = [cos(π·t₀/t_luce) − cos(π·t₁/t_luce)] / 2
+```text
+E_FV(t₀, t₁) = E_FV,sol · q(t₀, t₁),   q(t₀, t₁) = [cos(π·t₀/t_luce) − cos(π·t₁/t_luce)] / 2
+```
 
 Nelle fasi di guida E_FV = 0, salvo che l'ala sia dichiarata attiva in marcia.
 
 L'energia utile richiesta alla batteria è il debito massimo; con le celle a combustibile la batteria serve solo per i picchi. La capacità nominale è
 
-  C = max(E_utile / DOD, (P_picco,el − P_continua) / c_max)
+```text
+C = max(E_utile / DOD, (P_picco,el − P_continua) / c_max)
+```
 
-dove P_picco,el = P_picco + P_guida è il picco di trazione più i carichi di servizio in guida, P_continua la potenza erogata con continuità dai generatori (RPS; per le celle a combustibile la potenza media dell'escursione) e c_max la corrente massima di scarica in multipli della capacità (1/h; Scheda, *Potenza ed energia*: circa 0,2C nei progetti GRC).
+dove P_picco,el = P_picco + P_guida è il picco di trazione più i carichi di servizio in guida (il maggiore fra giorno e notte), P_continua la potenza erogata con continuità dai generatori (RPS; per le celle a combustibile la potenza media dell'escursione) e c_max la corrente massima di scarica in multipli della capacità (1/h; Scheda, *Potenza ed energia*: circa 0,2C nei progetti GRC).
 
 Massa: m_bat = C / e_spec. Attenzione alle unità: con C in kWh ed e_spec in Wh/kg, m = 1000·C/e_spec.
 
 **Vita a cicli (MR-07).** Un ciclo si chiude quando il debito torna a zero; se a fine escursione il debito è positivo, la ricarica alla base conta come un ciclo. Il numero di cicli nella vita operativa (cicli per escursione × numero di escursioni) si confronta con la tabella della Scheda alla riga di DOD uguale o immediatamente superiore a quella del ciclo più profondo, senza interpolare. Se il debito supera la capacità della batteria (DOD oltre l'ultima riga della tabella, possibile nella verifica fuori progetto) la vita a cicli perde significato: la riga riporta il debito in percentuale della capacità e la batteria insufficiente, con esito NON SODDISFATTO.
 
-**Notte (MR-12).** Ogni sol tipo deve avere una notte di almeno 12 h (`night_h` in `common.toml`, circa 12 h secondo brief e Scheda); una notte più breve dà NON SODDISFATTO. L'energia della notte, P_notte·max(t_notte,dichiarata, 12 h), si confronta con l'accumulo utile più la generazione notturna.
+**Notte (MR-12).** Ogni sol tipo deve avere una notte (guida e sosta) di almeno 12 h (`night_h` in `common.toml`, circa 12 h secondo brief e Scheda); una notte più breve dà NON SODDISFATTO. Per ogni sol tipo l'energia della notte,
+
+```text
+E_notte = P_sn·(t_notte − t_gn) + (P_gn + P_tr)·t_gn,   t_notte = max(t_notte,dichiarata, 12 h)
+```
+
+dove P_sn sono i carichi della sosta notturna, t_gn e P_gn ore e carichi della guida notturna, si confronta con l'accumulo utile più la generazione notturna; il report indica il sol tipo più sfavorevole.
 
 **Rientri (MR-14, MR-15).** Rientro dal punto più lontano (50 km) alla velocità v con t_g ore di guida per sol:
 
-  t_guida = d/v,   n = ⌈t_guida/t_g⌉ − 1,   t_rientro = n·t_sol + (t_guida − n·t_g)
-  E_rich = (1 + f_P)·P_servizio·t_rientro + E_tr(d)
-  E_disp = SOC·E_acc + P_RPS·t_rientro + E_FV,   E_acc = C·DOD + E_reagenti
-  E_FV   = f·P_FV·h_sole·n·[1 − q(0, t_g)]                     (ala ripiegata in marcia)
-  E_FV   = f·P_FV·h_sole·[n + q(0, t_guida − n·t_g)]           (ala attiva in marcia)
+```text
+t_guida = d/v,   n = ⌈t_guida/t_g⌉ − 1,   t_rientro = n·t_sol + (t_guida − n·t_g)
+E_rich = (1 + f_P)·P_servizio·t_rientro + E_tr(d)
+E_disp = SOC·E_acc + P_RPS·t_rientro + E_FV,   E_acc = C·DOD + E_reagenti
+E_FV   = f·P_FV·h_sole·n·[1 − q(0, t_g)]                     (ala ripiegata in marcia)
+E_FV   = f·P_FV·h_sole·[n + q(0, t_guida − n·t_g)]           (ala attiva in marcia)
+```
 
 dove n è il numero di sol completi prima dell'ultimo, E_acc l'energia utile installata (batteria fino alla DOD massima più, con le celle a combustibile, l'energia dei reagenti), SOC la frazione di E_acc disponibile all'inizio del rientro, f = 1 per l'emergenza e f = 0,15 per la tempesta (MR-15), q la quota sinusoidale dell'energia giornaliera, con t_luce pari al giorno più corto fra i sol tipo dichiarati.
 
@@ -249,14 +303,18 @@ Parametri: Scheda, *Ambiente marziano* e *Controllo termico*.
 
 Temperatura equivalente di pozzo, calcolata nel caso caldo:
 
-  T_pozzo⁴ = F·T_suolo⁴ + (1 − F)·T_cielo⁴
+```text
+T_pozzo⁴ = F·T_suolo⁴ + (1 − F)·T_cielo⁴
+```
 
 dove F è il fattore di vista verso il suolo (0 per un radiatore orizzontale rivolto verso l'alto, 0,5 per uno verticale).
 
 Calore da smaltire e area del radiatore:
 
-  Q = max(2·q_met + f_diss·max(P_modo),  4·q_met + f_diss·P_emergenza)
-  A = Q / [ε·σ·(T_rad⁴ − T_pozzo⁴)],   m = A·w_rad
+```text
+Q = max(2·q_met + f_diss·max(P_modo),  4·q_met + f_diss·P_emergenza)
+A = Q / [ε·σ·(T_rad⁴ − T_pozzo⁴)],   m = A·w_rad
+```
 
 dove q_met = 144 W è il calore metabolico per persona, f_diss la frazione dei carichi di servizio dissipata in cabina, P_emergenza i carichi del rientro di emergenza con quattro persone (MR-14), tutti con il margine di MR-21, A la superficie radiante e w_rad = 3,5 kg/m² la massa per unità di superficie (Scheda, pannello a due facce).
 
@@ -264,7 +322,9 @@ La massa è calcolata sull'intera superficie radiante: è una stima prudente, ch
 
 Dispersione dell'isolamento nel caso freddo, a titolo informativo:
 
-  Q_disp = k·A·(T_cabina − T_suolo,freddo) / t_isol
+```text
+Q_disp = k·A·(T_cabina − T_suolo,freddo) / t_isol
+```
 
 dove k è la conducibilità dell'isolamento, A la superficie del guscio e t_isol lo spessore dell'isolamento.
 
@@ -280,7 +340,7 @@ dove k è la conducibilità dell'isolamento, A la superficie del guscio e t_isol
 | MR-08 | ore di guida × velocità media ≥ 100 km; energia dell'escursione disponibile a bordo (debito massimo ≤ accumulo utile, oppure energia ≤ reagenti delle celle): soddisfatta per costruzione nel progetto nominale, conta nella verifica fuori progetto |
 | MR-10 | velocità in piano con la potenza di picco installata ≥ 5 km/h; velocità media di pianificazione = 3 km/h e non superiore alla velocità in piano |
 | MR-11 | velocità a 15° ≥ 1 km/h; angolo di ribaltamento laterale ≥ 25° (baricentro dalle posizioni, se complete, altrimenti `cg_height_m`) |
-| MR-12 | notte di ogni sol tipo ≥ 12 h; energia disponibile per la notte ≥ energia richiesta |
+| MR-12 | notte (guida e sosta) di ogni sol tipo ≥ 12 h; energia disponibile per la notte ≥ energia richiesta, nel sol tipo più sfavorevole |
 | MR-14 | posti ≥ 4; rientro entro 72 h; energia del rientro ≤ disponibile |
 | MR-15 | energia del rientro in tempesta ≤ disponibile |
 | MR-16 | schermatura del riparo ≥ 10 g/cm² nelle direzioni non coperte dal suolo; dose stimata per l'evento di riferimento, da confrontare con il limite di 250 mSv da cui deriva il requisito (informativa) |
@@ -302,4 +362,4 @@ I requisiti non quantitativi (per esempio MR-05, MR-17, MR-18) e le parti qualit
 - La struttura è stimata con masse areali fino a quando non è disponibile il modello FEM.
 - Il controllo termico considera solo il radiatore della cabina in regime stazionario.
 - La stabilità è verificata solo per il ribaltamento laterale; la stabilità longitudinale in pendenza non è verificata.
-- Nel sol la guida avviene all'inizio del periodo di luce, prima delle EVA e della sosta. Con l'ala ripiegata in marcia è la collocazione che perde meno produzione: un'altra ConOps va valutata modificando l'ordine delle fasi in `power.py`.
+- Nel sol la guida di giorno avviene all'inizio del periodo di luce, prima delle EVA e della sosta, e la guida notturna all'inizio della notte. Con l'ala ripiegata in marcia è la collocazione che perde meno produzione: un'altra ConOps va valutata modificando l'ordine delle fasi in `power.py`. La guida notturna è rappresentata solo nel bilancio di energia: sicurezza, sensori e navigazione si trattano nella documentazione del progetto.

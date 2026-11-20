@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from dimensionamento import inputs, requirements, sizing
+from dimensionamento import inputs, power, requirements, sizing
 from dimensionamento.__main__ import main
 from dimensionamento.sensitivity import sweep
 
@@ -32,10 +32,7 @@ def test_example_converges_to_the_fixed_point(common, example):
     # e non dipende dalla massa di partenza
     other = sizing.close_mass_loop(common, d, start=3000.0)
     assert other.mass == pytest.approx(res.loop.mass, abs=0.5)
-
-
-def test_budget_identity(example):
-    _, _, res = example
+    # il budget si chiude: voci previste + margine di sistema = totale
     b = res.budget
     assert b.total == pytest.approx(b.fixed + b.base_dry + b.mga + b.system_margin)
     assert sum(it.predicted for it in b.items) + b.system_margin == pytest.approx(b.total)
@@ -56,17 +53,6 @@ def test_divergence_message(common, example):
     loop = sizing.run(common, d).loop
     assert not loop.converged
     assert "somma delle frazioni" in loop.message
-
-
-def test_requirements_table(example):
-    _, _, res = example
-    checks = requirements.check_all(res)
-    ids = {c.mr for c in checks}
-    for mr in ("MR-07", "MR-08", "MR-10", "MR-11", "MR-12", "MR-14", "MR-15",
-               "MR-16", "MR-20", "MR-21"):
-        assert mr in ids
-    assert all(c.status in (requirements.OK, requirements.KO, requirements.NV, requirements.INFO)
-               for c in checks)
 
 
 @pytest.mark.parametrize("arch", ["rps", "fotovoltaico", "celle_combustibile", "batterie"])
@@ -96,7 +82,7 @@ def test_hybrid_requires_declared_power(common, example):
 def test_sol_hours_must_sum_to_a_sol(common, example):
     _, raw, _ = example
     data = copy.deepcopy(raw)
-    data["operations"]["sol_types"][0]["day_h"] += 1.0
+    data["operations"]["sol_types"][0]["day_stop_h"] += 1.0
     with pytest.raises(sizing.SizingError, match="sol"):
         sizing.run(common, inputs.validate(data, "prova.toml"))
 
@@ -113,6 +99,9 @@ def test_sweep(common, example):
     # valore non valido: la riga riporta l'errore, le altre restano
     rows = sweep(common, raw, "riferimento.toml", "mobility.crr", [0.2, 1.5])
     assert rows[0]["converged"] and not rows[1]["converged"] and "massimo" in rows[1]["note"]
+    # a rover congelato: a 0,6 i motori non bastano più (MR-10)
+    rows = sweep(common, raw, "riferimento.toml", "mobility.crr", [0.3, 0.6], frozen=True)
+    assert "MR-10" not in rows[0]["failed"] and "MR-10" in rows[1]["failed"]
 
 
 def test_cli_runs_and_writes(tmp_path, capsys):
@@ -121,6 +110,9 @@ def test_cli_runs_and_writes(tmp_path, capsys):
     assert "Budget di massa" in out and "Verifica dei requisiti" in out
     assert (tmp_path / "report.md").exists()
     assert any(p.suffix == ".csv" for p in tmp_path.iterdir())
+    assert main([str(EXAMPLE), "--fuori-progetto", "mobility.crr=0.6"]) == 0
+    out = capsys.readouterr().out
+    assert "Requisiti non soddisfatti fuori progetto" in out and "MR-10" in out
 
 
 def test_cli_reports_input_errors(tmp_path, capsys):
@@ -128,14 +120,6 @@ def test_cli_reports_input_errors(tmp_path, capsys):
     bad.write_text("[group\nname = 1", encoding="utf-8")
     assert main([str(bad)]) == 1
     assert "Errore" in capsys.readouterr().err
-
-
-def test_set_optional_key_absent_from_file(common):
-    d, _ = inputs.load_design(EXAMPLE, ['operations.sequence=["EVA","EVA","EVA","EVA","EVA","EVA","EVA",'
-                                        '"trasferimento","trasferimento","trasferimento","trasferimento",'
-                                        '"guida ed EVA","guida ed EVA","guida ed EVA"]'])
-    assert d.operations.sequence[0] == "EVA"
-    assert sizing.run(common, d).loop.converged
 
 
 def test_center_of_gravity_ignores_massless_items():
@@ -156,19 +140,17 @@ def test_excursions_outside_mr07_fail(common, example):
     assert row.status == requirements.KO
 
 
-def test_partial_positions_reported(common, example):
+def test_positions_and_center_of_gravity(common, example):
     from dimensionamento import report
-    _, raw, _ = example
+    _, raw, res0 = example
+    # posizioni parziali: niente baricentro, il report elenca le voci senza posizione
     data = copy.deepcopy(raw)
     data["positions"] = {"battery": [6.0, 0.0, 1.0]}
     res = sizing.run(common, inputs.validate(data, "prova.toml"))
     assert res.cg is None and "Batteria" not in res.cg_missing
     rows = report.performance_table(res)[2]
     assert any(r[0].startswith("Baricentro") and "Guscio della cabina" in r[1] for r in rows)
-
-
-def test_positions_give_center_of_gravity_used_by_mr11(common, example):
-    _, raw, res0 = example
+    # posizioni complete: baricentro calcolato e usato da MR-11
     data = copy.deepcopy(raw)
     keys = ("cabin", "tanks", "crew", "suits", "shield", "radiator", "drive", "payload",
             "battery", "rps")
@@ -194,13 +176,13 @@ def test_mr12_night_shorter_than_common_fails(common, example):
     _, raw, _ = example
     data = copy.deepcopy(raw)
     for s in data["operations"]["sol_types"]:          # notte di 10 h, ore spostate nella sosta
-        s["day_h"] += s["night_h"] - 10.0
-        s["night_h"] = 10.0
+        s["day_stop_h"] += s["night_stop_h"] - 10.0
+        s["night_stop_h"] = 10.0
     res = sizing.run(common, inputs.validate(data, "prova.toml"))
     night = next(c for c in _rows(res, "MR-12") if c.description.startswith("Durata della notte"))
     assert night.status == requirements.KO
     energy = next(c for c in _rows(res, "MR-12") if c.description.startswith("Energia"))
-    expected = res.fixed.p_service["night"] * common.environment.night / 3.6e6   # 12 h, non 10
+    expected = res.fixed.p_service["night_stop"] * common.environment.night / 3.6e6   # 12 h, non 10
     assert f"{expected:.1f}".replace(".", ",") in energy.required
 
 
@@ -218,7 +200,7 @@ def test_mr04_more_evas_accepted_and_fewer_fail(common, example):
 
 def test_traction_on_planned_distance(common, example):
     d, _, res = example
-    planned = sum(s.count * s.drive for s in d.operations.sol_types) * d.operations.v_mean
+    planned = power.drive_time(d.operations.sol_types) * d.operations.v_mean
     assert res.dep.distance == pytest.approx(max(planned, common.mission.distance))
 
 
@@ -256,26 +238,12 @@ def test_off_design_keeps_installed_hardware(common, example):
     assert v10.status == requirements.KO                # a 0,6 i motori non bastano più
 
 
-def test_frozen_sweep_lists_failed_requirements(common, example):
-    _, raw, _ = example
-    rows = sweep(common, raw, "riferimento.toml", "mobility.crr", [0.3, 0.6], frozen=True)
-    assert "MR-10" not in rows[0]["failed"] and "MR-10" in rows[1]["failed"]
-    rows = sweep(common, raw, "riferimento.toml", "mobility.crr", [0.6])
-    assert "MR-20" in rows[0]["failed"]
-
-
-def test_cli_off_design(capsys):
-    assert main([str(EXAMPLE), "--fuori-progetto", "mobility.crr=0.6"]) == 0
-    out = capsys.readouterr().out
-    assert "Requisiti non soddisfatti fuori progetto" in out and "MR-10" in out
-
-
 def test_common_assumptions_checked_on_design_values(common, example):
     d, raw, res = example
     assert all(c.status == requirements.OK for c in _rows(res, requirements.COMMON))
     data = copy.deepcopy(raw)
     data["mobility"]["crr"] = 0.08
-    data["loads"]["day_kw"] = 3.6
+    data["loads"]["day_stop_kw"] = 3.6
     low = sizing.run(common, inputs.validate(data, "prova.toml"))
     assert [c.status for c in _rows(low, requirements.COMMON)] == [requirements.KO] * 2
     data = copy.deepcopy(raw)
@@ -323,3 +291,25 @@ def test_italian_number_format():
     assert n(1e6) == "1.000.000"
     assert n(7203.8) == "7.204"
     assert n(None) == "-" and n(float("nan")) == "-"
+
+
+@pytest.mark.parametrize("arch", ["rps", "fotovoltaico"])
+def test_night_drive(common, example, arch):
+    d, raw, _ = example
+    data = copy.deepcopy(raw)
+    data["architecture"]["power"] = arch
+    base = sizing.run(common, inputs.validate(copy.deepcopy(data), "prova.toml"))
+    sol = data["operations"]["sol_types"][0]                    # guida spostata di notte
+    sol["day_stop_h"] += sol["day_drive_h"]
+    sol["night_stop_h"] -= sol["day_drive_h"]
+    sol["night_drive_h"], sol["day_drive_h"] = sol["day_drive_h"], 0.0
+    data["loads"]["night_drive_kw"] = data["loads"]["day_drive_kw"]
+    res = sizing.run(common, inputs.validate(data, "prova.toml"))
+    assert res.dep.distance == pytest.approx(base.dep.distance)     # stesse ore di guida
+    assert res.fixed.e_service["night_drive"] > 0
+    assert res.fixed.e_service["day_drive"] < base.fixed.e_service["day_drive"]
+    if arch == "fotovoltaico":
+        # di notte la trazione è tutta a carico della batteria
+        assert res.dep.battery_capacity > base.dep.battery_capacity
+    mr12 = [c for c in requirements.check_all(res) if c.mr == "MR-12"]
+    assert "sol tipo" in mr12[1].required

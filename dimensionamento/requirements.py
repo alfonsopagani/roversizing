@@ -59,7 +59,7 @@ def check_all(res) -> list[Check]:
     checks.append(Check(COMMON, "C_rr di progetto",
                         f"{n(a.crr_min, 1)}-{n(a.crr_max, 1)}", n(crr, 2),
                         _status(a.crr_min - TOL <= crr <= a.crr_max + TOL)))
-    load_mode = max(power.MODES, key=lambda mode: getattr(dn.loads, mode))
+    load_mode = max(power.modes_used(dn.operations.sol_types), key=lambda mode: getattr(dn.loads, mode))
     load = getattr(dn.loads, load_mode)
     checks.append(Check(COMMON, "Carichi di servizio, massimo fra i modi, senza margine",
                         f"{n(a.service_load_min / 1e3, 1)}-{n(a.service_load_max / 1e3, 1)} kW",
@@ -130,7 +130,9 @@ def check_all(res) -> list[Check]:
                         _status(v_flat >= m.v_flat * 0.999)))
     v_mean = d.operations.v_mean
     checks.append(Check("MR-10", "Velocità media usata per la pianificazione",
-                        f"= {n(m.v_plan * 3.6, 1)} km/h (≤ velocità in piano)", f"{n(v_mean * 3.6, 1)} km/h",
+                        f"= {n(m.v_plan * 3.6, 1)} km/h (≤ velocità in piano)",
+                        f"{n(v_mean * 3.6, 1)} km/h" + (f" (velocità in piano {n(v_flat * 3.6, 1)} km/h)"
+                                                        if v_mean > v_flat else ""),
                         _status(abs(v_mean - m.v_plan) <= 0.01 * m.v_plan and v_mean <= v_flat)))
 
     # MR-11: pendenza e stabilità statica
@@ -160,21 +162,29 @@ def check_all(res) -> list[Check]:
                         f"≤ {n(d.habitability.stowage, 2)} m³", f"{n(fx.v_stowage_need, 2)} m³",
                         _status(fx.v_stowage_need <= d.habitability.stowage)))
 
-    # MR-12: notte. Durata della notte nei sol tipo non inferiore a quella di
-    # common.toml (circa 12 h); l'energia si verifica sulla notte più lunga fra
-    # quella dichiarata e quella di common.toml.
+    # MR-12: notte. Durata della notte nei sol tipo (guida notturna compresa) non
+    # inferiore a quella di common.toml (circa 12 h); l'energia si verifica, per
+    # ogni sol tipo, sulla notte più lunga fra quella dichiarata e quella di
+    # common.toml, con la guida notturna e la sua trazione; si riporta il caso peggiore.
     night_min = env.night
-    shortest = min(d.operations.sol_types, key=lambda s: s.night)
+    shortest = min(d.operations.sol_types, key=power.night_time)
     checks.append(Check("MR-12", "Durata della notte nei sol tipo",
                         f"≥ {n(night_min / HOUR, 1)} h",
-                        f"{n(shortest.night / HOUR, 1)} h (sol tipo '{shortest.name}')",
-                        _status(shortest.night >= night_min - 1.0)))
+                        f"{n(power.night_time(shortest) / HOUR, 1)} h (sol tipo '{shortest.name}')",
+                        _status(power.night_time(shortest) >= night_min - 1.0)))
     usable = cap * d.battery.dod_max + dep.gen.fc_energy
-    night_hours = max(max(s.night for s in d.operations.sol_types), night_min)
-    worst_night = fx.p_service["night"] * night_hours
-    available = usable + dep.gen.rps * night_hours
+    p_nd = fx.p_service["night_drive"] + dep.traction_rate
+    nights = []
+    for s in d.operations.sol_types:
+        hrs = max(power.night_time(s), night_min)
+        nd = power.hours(s, "night_drive")
+        need = fx.p_service["night_stop"] * (hrs - nd) + p_nd * nd
+        nights.append((usable + dep.gen.rps * hrs - need, need, usable + dep.gen.rps * hrs, s))
+    _, worst_night, available, worst_sol = min(nights, key=lambda t: t[0])
+    where = (f" (sol tipo '{worst_sol.name}')"
+             if any(power.hours(s, "night_drive") > 0 for s in d.operations.sol_types) else "")
     checks.append(Check("MR-12", "Energia per la notte con equipaggio a bordo",
-                        f"≥ {n(worst_night / KWH, 1)} kWh",
+                        f"≥ {n(worst_night / KWH, 1)} kWh{where}",
                         f"{n(available / KWH, 1)} kWh (accumulo utile + generazione notturna)",
                         _status(available >= worst_night and dep.sim.max_deficit <= usable + 1.0)))
 

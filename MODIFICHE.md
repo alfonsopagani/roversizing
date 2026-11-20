@@ -15,6 +15,6 @@ Ogni modifica allo strumento va registrata qui, dalla più recente alla più vec
   con la versione originale e con quella modificata, a parità di file di input.
 ```
 
-## [1.0.0] - ottobre 2026 - versione distribuita
+## [1.0.0] - novembre 2026 - versione distribuita
 
 Prima versione dello strumento per l'esercitazione E2.

@@ -6,13 +6,14 @@ Tutte le tabelle sono costruite una volta sola da ``build_tables`` come
 from __future__ import annotations
 
 import csv
+import datetime
 import math
 import re
 from pathlib import Path
 
-from . import mobility
+from . import __version__, mobility
 from .constants import DAY, HOUR, KWH
-from .power import MODE_LABELS, MODES
+from .power import DRIVE_MODES, MODE_LABELS, drive_time, modes_used
 from .requirements import check_all, n
 
 Table = tuple[str, list[str], list[list[str]]]
@@ -22,25 +23,45 @@ NUMBER = re.compile(r"-?[\d.]+(,\d+)?")
 # ---------------------------------------------------------------------------
 # Costruzione delle tabelle
 # ---------------------------------------------------------------------------
-def header_lines(res, input_name: str) -> list[str]:
-    d, c = res.design, res.common
+# Testi del report per i valori interni (le chiavi del file di input non cambiano)
+SUBSYSTEM_LABELS = {"mobilita": "mobilità", "abitabilita": "abitabilità", "eclss": "ECLSS", "eva": "EVA"}
+ARCHITECTURE_LABELS = {"rps": "RPS", "celle_combustibile": "celle a combustibile",
+                       "ibrido": "ibrido (RPS e fotovoltaico)"}
+
+
+def subsystem_label(key: str) -> str:
+    return SUBSYSTEM_LABELS.get(key, key)
+
+
+def architecture_label(key: str) -> str:
+    return ARCHITECTURE_LABELS.get(key, key)
+
+
+def header_lines(d, c, input_name: str) -> list[str]:
+    """Intestazione comune a report, scansioni e verifica fuori progetto (d: progetto, c: dati comuni)."""
     g = d.group
-    lines = [f"Missione: {g.name} - versione {g.version}",
-             f"File di input: {input_name}",
-             "Studenti: " + "; ".join(f"{s.name} ({s.id})" + (f", {s.role}" if s.role else "")
-                                      for s in g.students),
-             f"Architettura di potenza: {d.architecture.power}",
-             "Dati comuni (common.toml): " + ("versione del corso" if c.unchanged
-                                              else f"MODIFICATI rispetto alla versione del corso "
-                                                   f"(impronta {c.fingerprint})")]
-    return lines
+    now = datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
+    return [f"Missione: {g.name} - versione {g.version}",
+            f"File di input: {input_name}",
+            "Studenti: " + "; ".join(f"{s.name} ({s.id})" + (f", {s.role}" if s.role else "")
+                                     for s in g.students),
+            f"Architettura di potenza: {architecture_label(d.architecture.power)}",
+            "Dati comuni (common.toml): " + ("versione del corso" if c.unchanged
+                                             else f"MODIFICATI rispetto alla versione del corso "
+                                                  f"(impronta {c.fingerprint})"),
+            f"Strumento: roversizing {__version__}, eseguito il {now}"]
+
+
+def markdown_header(title: str, lines: list[str]) -> str:
+    """Titolo e intestazione in elenco, per i file .md."""
+    return "\n".join([f"# {title}", ""] + [f"- {line}" for line in lines] + [""])
 
 
 def mass_tables(res) -> list[Table]:
     b, limit = res.budget, res.common.mission.mass_limit
     rows = []
     for it in b.items:
-        rows.append([it.name, it.subsystem, it.maturity or "fissa", n(it.base),
+        rows.append([it.name, subsystem_label(it.subsystem), (it.maturity or "fissa").replace("_", " "), n(it.base),
                      n(it.mga * 100) if not it.fixed else "-", n(it.predicted), it.source])
     summary = [
         ["Massa di base delle voci con margine", n(b.base_dry)],
@@ -53,7 +74,8 @@ def mass_tables(res) -> list[Table]:
         ["Riserva rispetto a MR-20", n(limit - b.total)],
     ]
     total = b.total
-    subs = [[k, n(v), n(v / total * 100, 1)] for k, v in sorted(b.by_subsystem.items(), key=lambda kv: -kv[1])]
+    subs = [[subsystem_label(k), n(v), n(v / total * 100, 1)]
+            for k, v in sorted(b.by_subsystem.items(), key=lambda kv: -kv[1])]
     subs.append(["margine di sistema", n(b.system_margin), n(b.system_margin / total * 100, 1)])
     return [("Budget di massa per voce",
              ["Voce", "Sottosistema", "Maturità", "Base [kg]", "MGA [%]", "Prevista [kg]", "Origine"], rows),
@@ -65,9 +87,9 @@ def power_tables(res) -> list[Table]:
     d, fx, dep, c = res.design, res.fixed, res.dep, res.common
     margin = c.margins.power
     rows = []
-    for mode in MODES:
+    for mode in modes_used(d.operations.sol_types):
         est = getattr(d.loads, mode)
-        trac = dep.traction_rate if mode == "drive" else 0.0
+        trac = dep.traction_rate if mode in DRIVE_MODES else 0.0
         rows.append([MODE_LABELS[mode], n(est / 1e3, 2), n(fx.p_service[mode] / 1e3, 2),
                      n(trac / 1e3, 2), n((fx.p_service[mode] + trac) / 1e3, 2)])
     rows.append(["picco di trazione (" + dep.peak_case + ")", "-", "-", n(dep.p_peak / 1e3, 2),
@@ -79,7 +101,7 @@ def power_tables(res) -> list[Table]:
     e_serv = sum(fx.e_service.values())
     e_tot = e_serv + dep.e_traction
     e_rows = [[f"servizio - {MODE_LABELS[m]}", n(fx.e_service[m] / KWH, 1), n(fx.e_service[m] / e_tot * 100, 1)]
-              for m in MODES]
+              for m in modes_used(d.operations.sol_types)]
     e_rows += [["servizio - totale", n(e_serv / KWH, 1), n(e_serv / e_tot * 100, 1)],
                ["trazione", n(dep.e_traction / KWH, 1), n(dep.e_traction / e_tot * 100, 1)],
                ["totale escursione", n(e_tot / KWH, 1), "100,0"]]
@@ -87,7 +109,7 @@ def power_tables(res) -> list[Table]:
 
     gen, sim = dep.gen, dep.sim
     cap = dep.battery_capacity
-    s_rows = [["Architettura", d.architecture.power, ""]]
+    s_rows = [["Architettura", architecture_label(d.architecture.power), ""]]
     if gen.rps > 0:
         s_rows.append(["RPS: potenza elettrica", n(gen.rps / 1e3, 2), "kW"])
         s_rows.append(["RPS: massa", n(dep.rps_mass), "kg"])
@@ -144,7 +166,7 @@ def performance_table(res) -> Table:
             [f"Velocità massima sulla pendenza di {n(math.degrees(m.slope))}°", n(v_slope * 3.6, 1), "km/h"],
             ["Coppia per ruota motrice in pendenza, M_r", n(torque), "N·m"],
             ["Percorrenza pianificata (ore di guida × velocità media)",
-             n(sum(s.count * s.drive for s in d.operations.sol_types) * d.operations.v_mean / 1e3), "km"],
+             n(drive_time(d.operations.sol_types) * d.operations.v_mean / 1e3), "km"],
             ["Energia di trazione per km", n(e_per_km / KWH, 2), "kWh/km"],
             ["Percorrenza aggiuntiva con l'energia utile residua", n(extra_km), "km"],
             ["Consumabili a bordo (escursione, emergenza e riserva)", n(person_days, 1), "persone-giorno"],
@@ -163,29 +185,25 @@ def performance_table(res) -> Table:
 def subsystem_tables(res) -> list[Table]:
     fx, d = res.fixed, res.design
     cons = fx.cons
-    e_rows = [["O2 metabolico", n(cons.o2_metabolic, 1)], ["O2 delle EVA", n(cons.o2_eva, 1)],
+    e_rows = [["O₂ metabolico", n(cons.o2_metabolic, 1)], ["O₂ delle EVA", n(cons.o2_eva, 1)],
               ["Miscela persa dalla cabina", n(cons.gas_leak, 1)],
               ["Miscela persa nei cicli di uscita", n(cons.gas_access, 1)],
-              ["O2 totale", n(cons.o2, 1)], ["N2 totale", n(cons.n2, 1)],
+              ["O₂ totale", n(cons.o2, 1)], ["N₂ totale", n(cons.n2, 1)],
               ["Acqua", n(cons.water, 1)], ["Cibo", n(cons.food, 1)],
-              ["Assorbitore di CO2", n(cons.sorbent, 1)], ["Serbatoi", n(fx.tanks, 1)]]
+              ["Assorbitore di CO₂", n(cons.sorbent, 1)], ["Serbatoi", n(fx.tanks, 1)]]
     sh = fx.shelter
-    r_rows = [["Schermo richiesto [kg]", n(sh.required)], ["Coperto dall'acqua [kg]", n(sh.from_water)],
-              ["Coperto da altri materiali [kg]", n(sh.from_other)], ["Massa aggiuntiva [kg]", n(sh.added)],
-              ["Dose efficace dall'evento solare, nel riparo [mSv]", n(fx.spe_dose_shelter)],
-              ["Dose efficace dall'evento solare, senza riparo [mSv]", n(fx.spe_dose_unshielded)],
-              ["Dose efficace da raggi cosmici in un'escursione [mSv]", n(fx.gcr_dose, 1)]]
-    s_rows = [["Guscio (" + fx.cabin.shell_source + ")", n(fx.cabin.shell), "kg"],
-              ["Pavimento e pareti interne", n(fx.cabin.interior), "kg"],
-              ["Isolamento", n(fx.cabin.insulation), "kg"]]
+    r_rows = [["Schermo richiesto", n(sh.required), "kg"], ["Coperto dall'acqua", n(sh.from_water), "kg"],
+              ["Coperto da altri materiali", n(sh.from_other), "kg"], ["Massa aggiuntiva", n(sh.added), "kg"],
+              ["Dose efficace dall'evento solare, nel riparo", n(fx.spe_dose_shelter), "mSv"],
+              ["Dose efficace dall'evento solare, senza riparo", n(fx.spe_dose_unshielded), "mSv"],
+              ["Dose efficace da raggi cosmici in un'escursione", n(fx.gcr_dose, 1), "mSv"]]
     t_rows = [["Calore da smaltire (caso caldo, " + fx.heat_case + ")", n(fx.heat), "W"],
               ["Temperatura di pozzo", n(fx.t_sink, 1), "K"],
               ["Temperatura del radiatore", n(d.thermal.radiator_temperature, 1), "K"],
               ["Superficie del radiatore", n(fx.radiator_area, 1), "m²"],
               ["Dispersione dell'isolamento (caso freddo, limite superiore)", n(fx.heat_loss), "W"]]
     return [("ECLSS: consumabili e serbatoi per escursione", ["Voce", "Massa [kg]"], e_rows),
-            ("Riparo e dosi di radiazione (MR-16)", ["Voce", "Valore"], r_rows),
-            ("Struttura della cabina", ["Grandezza", "Valore", "Unità"], s_rows),
+            ("Riparo e dosi di radiazione (MR-16)", ["Grandezza", "Valore", "Unità"], r_rows),
             ("Controllo termico", ["Grandezza", "Valore", "Unità"], t_rows)]
 
 
@@ -248,7 +266,7 @@ def format_markdown(table: Table) -> str:
 
 
 def print_report(res, input_name: str) -> None:
-    print("\n".join(header_lines(res, input_name)))
+    print("\n".join(header_lines(res.design, res.common, input_name)))
     print()
     if not res.loop.converged:
         print(res.loop.message)
@@ -267,7 +285,7 @@ def write_outputs(res, input_name: str, folder: Path) -> list[Path]:
     """Scrive report.md (tutte le tabelle) e un CSV per tabella nella cartella indicata."""
     folder.mkdir(parents=True, exist_ok=True)
     written = []
-    md = ["# Report di dimensionamento", ""] + [f"- {line}" for line in header_lines(res, input_name)] + [""]
+    md = [markdown_header("Report di dimensionamento", header_lines(res.design, res.common, input_name))]
     if not res.loop.converged:
         md += ["```", res.loop.message, "```"]
     else:
@@ -290,6 +308,7 @@ def write_outputs(res, input_name: str, folder: Path) -> list[Path]:
 # ---------------------------------------------------------------------------
 INK, INK2, GRID, SURFACE = "#0b0b0b", "#52514e", "#e4e3df", "#fcfcfb"
 SERIES = ("#2a78d6", "#eb6834", "#1baf7a")
+MARGIN = "#a3a19b"                     # barre dei margini
 
 
 def _pyplot():
@@ -310,11 +329,12 @@ def plot_mass(res, folder: Path) -> Path:
     """Massa prevista per sottosistema (barre orizzontali) con il margine di sistema."""
     plt = _pyplot()
     b = res.budget
-    data = sorted(b.by_subsystem.items(), key=lambda kv: kv[1])
+    data = [(subsystem_label(k), v) for k, v in sorted(b.by_subsystem.items(), key=lambda kv: kv[1])]
     data.insert(0, ("margine di sistema", b.system_margin))
     labels, values = zip(*data)
+    colors = [MARGIN] + [SERIES[0]] * (len(labels) - 1)          # il margine non è un sottosistema
     fig, ax = plt.subplots(figsize=(7, 0.4 * len(labels) + 1.2))
-    ax.barh(labels, values, color=SERIES[0], height=0.6)
+    ax.barh(labels, values, color=colors, height=0.6)
     for y, v in enumerate(values):
         ax.text(v, y, f" {n(v)}", va="center", color=INK2, fontsize=9)
     ax.set_xlabel("Massa [kg]")
@@ -330,17 +350,20 @@ def plot_mass(res, folder: Path) -> Path:
 
 
 def plot_energy(res, folder: Path) -> Path:
-    """Energia per escursione: carichi di servizio per modo e trazione."""
+    """Energia per escursione: carichi di servizio per modo (blu) e trazione (arancio)."""
     plt = _pyplot()
     fx, dep = res.fixed, res.dep
-    labels = [f"servizio\n{MODE_LABELS[m]}" for m in MODES] + ["trazione"]
-    values = [fx.e_service[m] / KWH for m in MODES] + [dep.e_traction / KWH]
-    fig, ax = plt.subplots(figsize=(7, 3.6))
-    ax.bar(labels, values, color=SERIES[0], width=0.6)
+    modes = modes_used(res.design.operations.sol_types)
+    labels = [MODE_LABELS[m].replace(" ", "\n", 1) for m in modes] + ["trazione"]
+    values = [fx.e_service[m] / KWH for m in modes] + [dep.e_traction / KWH]
+    colors = [SERIES[0]] * len(modes) + [SERIES[1]]
+    fig, ax = plt.subplots(figsize=(1.2 * len(labels) + 1.0, 3.8))   # 7 in con cinque barre
+    bars = ax.bar(labels, values, color=colors, width=0.6)
     for x, v in enumerate(values):
         ax.text(x, v, f"{n(v)}", ha="center", va="bottom", color=INK2, fontsize=9)
-    ax.set_ylabel("Energia per escursione [kWh]")
-    ax.set_title("Energia per escursione", color=INK, fontsize=11, loc="left")
+    ax.legend([bars[0], bars[-1]], ["carichi di servizio, per modo", "trazione"], frameon=False, loc="upper left")
+    ax.set_ylabel("Energia [kWh]")
+    ax.set_title(f"Energia per escursione: {n(sum(values))} kWh", color=INK, fontsize=11, loc="left")
     ax.grid(axis="y", color=GRID, linewidth=0.8)
     ax.set_axisbelow(True)
     fig.tight_layout()

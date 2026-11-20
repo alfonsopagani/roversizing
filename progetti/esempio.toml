@@ -31,45 +31,56 @@ power = "rps"                     # ipotesi del gruppo: "batterie", "rps", "foto
 [operations]
 v_mean_kmh = 3                    # MR-10: velocità media per la pianificazione
 climb_m = 2000                    # ipotesi del gruppo: salita cumulata nell'escursione (da profilo del percorso)
-maneuver_margin = 0.05            # Scheda, Potenza ed energia: 5% di margine sulla potenza di trazione (rover GRC), qui sull'energia
+maneuver_margin = 0.05            # margine per manovre e percorso non rettilineo; Scheda, Potenza ed energia: 5% sulla potenza di trazione (rover GRC), qui sull'energia
 reserve_d = 0                     # ipotesi del gruppo: giorni di riserva di consumabili oltre MR-03 e MR-14
 excursions = 18                   # MR-07: 12-18 escursioni; si usa il caso più severo
+sequence = [                      # ipotesi del gruppo: ordine dei 14 sol (qui l'alternanza dei sol tipo)
+  "trasferimento", "guida ed EVA", "EVA",
+  "trasferimento", "guida ed EVA", "EVA",
+  "trasferimento", "guida ed EVA", "EVA",
+  "trasferimento", "EVA", "EVA", "EVA", "EVA",
+]
 
 # Sol tipo: ore passate in ciascun modo operativo. Ogni sol tipo deve sommare a
 # 24,65 h (un sol); la somma dei "count" deve essere 14 (MR-03).
-# I sol tipo si alternano nell'ordine in cui sono scritti.
+# L'ordine dei sol è dato da sequence in [operations]; senza sequence i sol tipo
+# si alternano nell'ordine in cui sono scritti, un sol per tipo a ogni giro.
 [[operations.sol_types]]
 name = "trasferimento"            # ipotesi del gruppo
 count = 4                         # ipotesi del gruppo: sol di solo trasferimento
-drive_h = 5                       # Scheda, Mobilità: 5 h di guida per sol (ipotesi DRA)
-eva_h = 0                         # nessuna EVA in questo sol tipo
-day_h = 7.35                      # sosta di giorno con equipaggio a bordo
-night_h = 12.3                    # ipotesi del gruppo: notte di circa 12 h (Design brief; Scheda, Ambiente marziano)
+day_drive_h = 5                   # Scheda, Mobilità: 5 h di guida per sol (ipotesi DRA)
+day_eva_h = 0                     # nessuna EVA in questo sol tipo
+day_stop_h = 7.35                 # ipotesi del gruppo: equipaggio a bordo
+night_drive_h = 0                 # nessuna guida notturna
+night_stop_h = 12.3               # ipotesi del gruppo: notte di circa 12 h (Design brief; Scheda, Ambiente marziano)
 
 [[operations.sol_types]]
 name = "guida ed EVA"             # ipotesi del gruppo
 count = 3                         # ipotesi del gruppo
-drive_h = 5                       # Scheda, Mobilità: 5 h di guida per sol
-eva_h = 4                         # ipotesi del gruppo: EVA breve a fine tragitto
-day_h = 3.35                      # sosta di giorno
-night_h = 12.3                    # ipotesi del gruppo
+day_drive_h = 5                   # Scheda, Mobilità: 5 h di guida per sol
+day_eva_h = 4                     # ipotesi del gruppo: EVA breve a fine tragitto
+day_stop_h = 3.35                 # ipotesi del gruppo
+night_drive_h = 0                 # nessuna guida notturna
+night_stop_h = 12.3               # ipotesi del gruppo
 
 [[operations.sol_types]]
 name = "EVA"                      # ipotesi del gruppo: sol dedicati alle EVA (MR-04)
 count = 7                         # ipotesi del gruppo: con i 3 sol precedenti fa 10 EVA (MR-04)
-drive_h = 0                       # nessuna guida
-eva_h = 8                         # MR-04: fino a 8 h
-day_h = 4.35                      # sosta di giorno
-night_h = 12.3                    # ipotesi del gruppo
+day_drive_h = 0                   # nessuna guida
+day_eva_h = 8                     # MR-04: fino a 8 h
+day_stop_h = 4.35                 # ipotesi del gruppo
+night_drive_h = 0                 # nessuna guida notturna
+night_stop_h = 12.3               # ipotesi del gruppo
 
 # -----------------------------------------------------------------------------
 # Carichi di servizio (tutto tranne la trazione), PRIMA del margine del 30%
 # -----------------------------------------------------------------------------
 [loads]
-drive_kw = 3.0                    # ipotesi del gruppo, nell'intervallo 1,8-3,4 kW (Design brief, Ipotesi comuni)
-day_kw = 3.0                      # ipotesi del gruppo
-eva_kw = 3.0                      # ipotesi del gruppo
-night_kw = 2.6                    # ipotesi del gruppo
+day_drive_kw = 3.0                # ipotesi del gruppo, nell'intervallo 1,8-3,4 kW (Design brief, Ipotesi comuni)
+day_eva_kw = 3.0                  # ipotesi del gruppo
+day_stop_kw = 3.0                 # ipotesi del gruppo: equipaggio a bordo
+night_drive_kw = 0                # ipotesi del gruppo: guida notturna non prevista
+night_stop_kw = 2.6               # ipotesi del gruppo: equipaggio a riposo
 
 # -----------------------------------------------------------------------------
 # Rientri particolari
@@ -91,9 +102,9 @@ soc_initial = 0.8                 # ipotesi del gruppo: stato di carica all'iniz
 # -----------------------------------------------------------------------------
 [habitability]
 nhv_m3 = 9.7                      # Scheda, Abitabilità e volumi: NHV dello SPR Gen 1B
-nhv_fraction = 0.80               # Scheda, Abitabilità e volumi: 79-82%
-stowage_m3 = 1.36                 # Scheda, Abitabilità e volumi: capacità di stivaggio interna
-stowage_items_m3 = 1.1            # Scheda, Abitabilità e volumi: kit medici 0,256 m³; ipotesi del gruppo: ricambi, attrezzi, sacchi dei rifiuti e campioni
+nhv_fraction = 0.80               # volume abitabile netto / volume pressurizzato; Scheda, Abitabilità e volumi: 79-82%
+stowage_m3 = 1.36                 # stivaggio interno disponibile; Scheda, Abitabilità e volumi
+stowage_items_m3 = 1.1            # voci da stivare oltre a cibo e acqua; Scheda, Abitabilità e volumi: kit medici 0,256 m³; ipotesi del gruppo: ricambi, attrezzi, sacchi dei rifiuti e campioni
 other_pressurized_m3 = 0          # ipotesi del gruppo: nessun airlock interno
 water_inside = true               # ipotesi del gruppo: serbatoi d'acqua in cabina
 seats = 4                         # MR-14: posti per 4 persone in emergenza
@@ -141,21 +152,21 @@ metabolic_w = 144                 # Scheda, Equipaggio ed ECLSS: calore metaboli
 body_mass_kg = 82                 # Scheda, Equipaggio ed ECLSS
 o2_recovery = 0                   # ipotesi del gruppo: ciclo aperto
 water_recovery = 0                # ipotesi del gruppo: ciclo aperto
-co2_sorbent_ratio = 1.5           # ipotesi del gruppo: kg di LiOH e cartucce per kg di CO2 (teorico 1/0,92, Scheda, Equipaggio ed ECLSS)
+co2_sorbent_ratio = 1.5           # kg di assorbitore (LiOH e cartucce) per kg di CO2; ipotesi del gruppo (teorico 1/0,92, Scheda, Equipaggio ed ECLSS)
 o2_tank_ratio = 1.45              # Scheda, Equipaggio ed ECLSS: serbatoi in pressione
 n2_tank_ratio = 1.93              # Scheda, Equipaggio ed ECLSS: serbatoi in pressione
-water_tank_ratio = 0.10           # ipotesi del gruppo: la Scheda esclude i serbatoi d'acqua
+water_tank_ratio = 0.10           # kg di serbatoio per kg d'acqua; ipotesi del gruppo: la Scheda esclude i serbatoi d'acqua
 cabin_temperature_k = 295         # ipotesi del gruppo
 tanks_maturity = "derivato"       # MR-21: maturità dichiarata dal gruppo
 
 [eva_access]                      # MR-05
-suitport_evas = 10                # ipotesi del gruppo: tutte le EVA con suitport
-airlock_evas = 0                  # ipotesi del gruppo: nessun airlock
-suitport_loss_kg = 0.03           # Scheda, Equipaggio ed ECLSS: gas perso per persona e per ciclo (requisito SPR)
-suitport_cycles_per_eva = 2       # ipotesi del gruppo: un ciclo in uscita e uno in rientro
-airlock_gas_m3 = 3.7              # Scheda, Equipaggio ed ECLSS: airlock per due persone
-airlock_loss_fraction = 0.10      # Scheda, Equipaggio ed ECLSS
-airlock_cycles_per_eva = 1        # ipotesi del gruppo
+suitport_evas = 10                # EVA con suitport; ipotesi del gruppo: tutte le EVA
+airlock_evas = 0                  # EVA con airlock; ipotesi del gruppo: nessun airlock
+suitport_loss_kg = 0.03           # gas perso per persona e per ciclo; Scheda, Equipaggio ed ECLSS (requisito SPR)
+suitport_cycles_per_eva = 2       # cicli per EVA; ipotesi del gruppo: uno in uscita e uno in rientro
+airlock_gas_m3 = 0                # volume di gas libero dell'airlock; airlock non previsto
+airlock_loss_fraction = 0         # frazione del gas persa a ogni ciclo; airlock non previsto
+airlock_cycles_per_eva = 0        # cicli per EVA; airlock non previsto
 
 [suits]                           # massa fissa, senza margini (MR-21)
 count = 2                         # ipotesi del gruppo
@@ -167,8 +178,8 @@ mass_kg = 110                     # Scheda, Equipaggio ed ECLSS: tuta con PLSS
 [radiation]
 shield_g_cm2 = 10                 # MR-16: schermatura minima del riparo
 shelter_area_m2 = 6.0             # ipotesi del gruppo: riparo per 2 persone sedute, superficie nelle direzioni non coperte dal suolo
-water_fraction = 0.5              # ipotesi del gruppo: acqua disponibile come schermo a metà escursione
-other_shielding_kg = 0            # ipotesi del gruppo: altri materiali riconfigurati
+water_fraction = 0.5              # quota dell'acqua di bordo usata come schermo; ipotesi del gruppo: a metà escursione
+other_shielding_kg = 0            # altri materiali di bordo riconfigurati come schermo; ipotesi del gruppo: nessuno
 maturity = "da_progettare"        # MR-21: maturità dichiarata dal gruppo
 
 # -----------------------------------------------------------------------------
@@ -221,9 +232,9 @@ maturity = "da_progettare"        # MR-21: maturità dichiarata dal gruppo
 [thermal]
 radiator_temperature_k = 300      # Scheda, Controllo termico: circuito di cabina
 emissivity = 0.84                 # Scheda, Controllo termico
-ground_view_factor = 0.5          # ipotesi del gruppo: radiatore verticale
+ground_view_factor = 0.5          # fattore di vista del radiatore verso il suolo; ipotesi del gruppo: radiatore verticale
 radiator_areal_kg_m2 = 3.5        # Scheda, Controllo termico
-dissipated_fraction = 1.0         # ipotesi del gruppo: tutti i carichi di servizio diventano calore in cabina
+dissipated_fraction = 1.0         # quota dei carichi di servizio che diventa calore in cabina; ipotesi del gruppo: tutti
 maturity = "da_progettare"        # MR-21: maturità dichiarata dal gruppo
 
 # -----------------------------------------------------------------------------
@@ -234,6 +245,8 @@ name = "Telaio"
 subsystem = "struttura"
 fraction = 0.09                   # Scheda, Ripartizione delle masse: 652 kg su 7.015 (rover USRA)
 maturity = "da_progettare"        # MR-21: maturità dichiarata dal gruppo
+# source = "FEM"                  # facoltativa: origine della massa, riportata nel budget
+# position_m = [x, y, z]          # facoltativa: posizione della voce
 
 [[items]]
 name = "Ruote e sospensioni"

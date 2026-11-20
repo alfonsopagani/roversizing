@@ -135,7 +135,9 @@ SCHEMA: dict[str, dict[str, Spec]] = {
         "sequence": Spec("strs", required=False),
     },
     "loads": {
-        "drive_kw": F(), "day_kw": F(), "night_kw": F(), "eva_kw": F(),
+        "day_drive_kw": F(), "day_eva_kw": F(), "day_stop_kw": F(),
+        "night_drive_kw": Spec("float", required=False, lo=0.0, default=0.0),
+        "night_stop_kw": F(),
     },
     "emergency": {
         "v_return_kmh": F(lo=0.01),
@@ -277,7 +279,9 @@ OPTIONAL_SECTIONS = {"rps", "pv", "fuel_cell", "positions", "envelope"}
 SOL_TYPE_SPEC = {
     "name": Spec("str"),
     "count": Spec("int", lo=0),
-    "drive_h": F(), "day_h": F(), "night_h": F(), "eva_h": F(),
+    "day_drive_h": F(), "day_eva_h": F(), "day_stop_h": F(),
+    "night_drive_h": Spec("float", required=False, lo=0.0, default=0.0),
+    "night_stop_h": F(),
 }
 STUDENT_SPEC = {
     "name": Spec("str"),
@@ -300,8 +304,8 @@ POSITION_KEYS = ("cabin", "tanks", "crew", "suits", "shield", "radiator", "drive
 nello stesso punto del layout:
     cabin      guscio, pavimento e pareti interne, isolamento (masse distribuite
                sull'involucro: baricentro circa al centro geometrico della cabina)
-    tanks      serbatoi e loro contenuto (O2, N2, acqua)
-    crew       equipaggio, cibo e assorbitore di CO2 (in cabina)
+    tanks      serbatoi e loro contenuto (O₂, N₂, acqua)
+    crew       equipaggio, cibo e assorbitore di CO₂ (in cabina)
     suits      tute EVA (ai suitport o nell'airlock)
     shield     schermo aggiuntivo del riparo (solo se presente)
     radiator, drive, payload
@@ -532,6 +536,20 @@ def validate(raw: dict, file: str = "input") -> SimpleNamespace:
             if n != s["count"]:
                 raise InputError(f"{_where(file, 'operations', 'sequence')}: il sol tipo '{s['name']}' "
                                  f"compare {n} volte, ma count = {s['count']}.")
+
+    night_driving = any(s["night_drive"] > 0 for s in ops["sol_types"])
+    if night_driving and out["loads"]["night_drive"] <= 0:
+        raise InputError(f"{_where(file, 'loads', 'night_drive_kw')}: con la guida notturna "
+                         "(night_drive_h > 0) dichiarare i carichi di servizio durante la guida notturna.")
+
+    ea = out["eva_access"]
+    if ea["suitport_evas"] > 0 and min(ea["suitport_loss"], ea["suitport_cycles_per_eva"]) <= 0:
+        raise InputError(f"{_where(file, 'eva_access')}: con suitport_evas > 0 dichiarare suitport_loss_kg "
+                         "e suitport_cycles_per_eva, maggiori di zero.")
+    if ea["airlock_evas"] > 0 and min(ea["airlock_gas"], ea["airlock_loss_fraction"],
+                                      ea["airlock_cycles_per_eva"]) <= 0:
+        raise InputError(f"{_where(file, 'eva_access')}: con airlock_evas > 0 dichiarare airlock_gas_m3, "
+                         "airlock_loss_fraction e airlock_cycles_per_eva, maggiori di zero.")
 
     bat = out["battery"]
     if len(bat["cycle_dod"]) != len(bat["cycle_count"]):

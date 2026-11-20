@@ -76,6 +76,12 @@ def sweep(common, raw: dict, file: str, key: str, values: list[float],
     return rows
 
 
+def value_text(v) -> str:
+    """Valore del parametro senza zeri finali (0,1 e non 0,100)."""
+    s = n(v, 0 if isinstance(v, int) else 3)
+    return s.rstrip("0").rstrip(",") if "," in s else s
+
+
 def sweep_table(key: str, rows: list[dict], frozen: bool = False) -> Table:
     if frozen:
         headers = [key, "Velocità in piano [km/h]", "Velocità in pendenza [km/h]", "E trazione [kWh]",
@@ -86,17 +92,16 @@ def sweep_table(key: str, rows: list[dict], frozen: bool = False) -> Table:
                    "Batteria [kWh]", "k = dF/dm", "Requisiti non soddisfatti"]
     out = []
     for r in rows:
-        nd = 0 if isinstance(r["value"], int) else 3
         if r["converged"] and frozen:
-            out.append([n(r["value"], nd), n(r["v_flat"] * 3.6, 1), n(r["v_slope"] * 3.6, 1),
+            out.append([value_text(r["value"]), n(r["v_flat"] * 3.6, 1), n(r["v_slope"] * 3.6, 1),
                         n(r["e_traction"] / KWH), n(r["deficit"] / KWH), n(r["usable"] / KWH), r["failed"]])
         elif r["converged"]:
-            out.append([n(r["value"], nd), n(r["total"]), n(r["reserve"]), n(r["p_peak"] / 1e3, 1),
+            out.append([value_text(r["value"]), n(r["total"]), n(r["reserve"]), n(r["p_peak"] / 1e3, 1),
                         n(r["e_service"] / KWH), n(r["e_traction"] / KWH), n(r["power_mass"]),
                         n(r["battery"] / KWH), n(r["gain"], 3), r["failed"]])
         else:
             why = r.get("note") or (f"non converge (k = {n(r['gain'], 3)})" if "gain" in r else "non converge")
-            out.append([n(r["value"], nd), why] + [""] * (len(headers) - 2))
+            out.append([value_text(r["value"]), why] + [""] * (len(headers) - 2))
     title = (f"Verifica fuori progetto al variare di {key} (rover congelato)" if frozen
              else f"Sensitività a {key}")
     return (title, headers, out)
@@ -120,8 +125,8 @@ def plot_frozen(key: str, rows: list[dict], mission, folder: Path) -> list[Path]
         ax.plot(x, y, color=color, linewidth=2, marker="o", markersize=5)
         ax.text(x[-1], y[-1], f"  {label}", va="center", color=INK2, fontsize=9)
         ax.axhline(req * 3.6, color=color, linewidth=1, linestyle="--")
-        ax.text(x[0], req * 3.6, " MR-10" if field == "v_flat" else " MR-11", va="bottom",
-                color=INK2, fontsize=9)
+        ax.text(x[0], req * 3.6, f" {'MR-10' if field == 'v_flat' else 'MR-11'}: {req * 3.6:g} km/h",
+                va="bottom", color=INK2, fontsize=9)
     ax.set_title(f"Velocità con la potenza installata al variare di {key}", color=INK, fontsize=11, loc="left")
     ax.set_xlabel(key)
     ax.set_ylabel("Velocità [km/h]")
@@ -165,7 +170,7 @@ def plot_sweep(key: str, rows: list[dict], limit: float, folder: Path) -> list[P
     failed = [r["value"] for r in rows if not r["converged"]]
     title = f"Massa totale al variare di {key}"
     if failed:
-        title += f" (non converge per {', '.join(n(v, 3) for v in failed)})"
+        title += f" (non converge per {', '.join(value_text(v) for v in failed)})"
     ax.set_title(title, color=INK, fontsize=11, loc="left")
     ax.set_xlabel(key)
     ax.set_ylabel("Massa a pieno carico [kg]")
@@ -180,9 +185,8 @@ def plot_sweep(key: str, rows: list[dict], limit: float, folder: Path) -> list[P
     series = (("servizio", "e_service", SERIES[0]), ("trazione", "e_traction", SERIES[1]))
     for label, field, color in series:
         y = [r[field] / KWH for r in ok]
-        ax.plot(x, y, color=color, linewidth=2, marker="o", markersize=5, label=label)
+        ax.plot(x, y, color=color, linewidth=2, marker="o", markersize=5)
         ax.text(x[-1], y[-1], f"  {label}", va="center", color=INK2, fontsize=9)
-    ax.legend(frameon=False, loc="upper center", bbox_to_anchor=(0.5, -0.2), ncol=2)
     ax.set_title(f"Energia per escursione al variare di {key}", color=INK, fontsize=11, loc="left")
     ax.set_xlabel(key)
     ax.set_ylabel("Energia [kWh]")

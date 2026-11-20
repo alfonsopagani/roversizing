@@ -28,8 +28,9 @@ def test_common_is_course_version():
 
 
 def test_override():
-    d, _ = inputs.load_design(EXAMPLE, ["mobility.crr=0.6"])
+    d, _ = inputs.load_design(EXAMPLE, ["mobility.crr=0.6", "cabin.fem_min_margin=0.2"])
     assert d.mobility.crr == pytest.approx(0.6)
+    assert d.cabin.fem_min_margin == pytest.approx(0.2)        # chiave facoltativa assente dal file
     with pytest.raises(InputError):
         inputs.load_design(EXAMPLE, ["mobility.crrr=0.6"])
 
@@ -40,38 +41,27 @@ def _raw():
         return tomllib.load(fh)
 
 
-def _set(raw, section, key, value):
-    raw[section][key] = value
+def _night_drive_without_loads(raw):
+    raw["operations"]["sol_types"][0]["night_drive_h"] = 2.0
+    del raw["loads"]["night_drive_kw"]
 
 
-def _del(raw, section, key, _value):
-    del raw[section][key]
-
-
-@pytest.mark.parametrize("change, section, key, value, message", [
-    (_set, "mobility", "ccr", 0.2, "ccr"),                        # chiave sconosciuta
-    (_del, "mobility", "eta", None, "eta"),                       # chiave mancante
-    (_set, "mobility", "crr", 1.5, "massimo"),                    # fuori intervallo
-    (_set, "architecture", "power", "nucleare", "non ammesso"),   # valore non ammesso
+@pytest.mark.parametrize("change, message", [
+    pytest.param(lambda r: r["mobility"].update(ccr=0.2), "ccr", id="chiave sconosciuta"),
+    pytest.param(lambda r: r["mobility"].pop("eta"), "eta", id="chiave mancante"),
+    pytest.param(lambda r: r["mobility"].update(crr=1.5), "massimo", id="fuori intervallo"),
+    pytest.param(lambda r: r["architecture"].update(power="nucleare"), "non ammesso", id="valore non ammesso"),
+    pytest.param(lambda r: r["items"][0].update(mass_kg=100.0), "non entrambi", id="massa e frazione"),
+    pytest.param(lambda r: r["operations"].update(sequence=["EVA"] * 14), "sequence", id="sequence"),
+    pytest.param(_night_drive_without_loads, "night_drive_kw", id="guida notturna senza carichi"),
+    pytest.param(lambda r: r["eva_access"].update(airlock_evas=2), "airlock_gas_m3", id="airlock senza dati"),
+    pytest.param(lambda r: r["eva_access"].update(suitport_cycles_per_eva=0), "suitport_cycles_per_eva",
+                 id="suitport senza cicli"),
 ])
-def test_input_errors_are_reported(change, section, key, value, message):
+def test_input_errors_are_reported(change, message):
     raw = _raw()
-    change(raw, section, key, value)
+    change(raw)
     with pytest.raises(InputError, match=message):
-        inputs.validate(raw, "prova.toml")
-
-
-def test_item_needs_mass_or_fraction():
-    raw = _raw()
-    raw["items"][0]["mass_kg"] = 100.0           # la prima voce ha già fraction
-    with pytest.raises(InputError, match="non entrambi"):
-        inputs.validate(raw, "prova.toml")
-
-
-def test_sequence_must_match_counts():
-    raw = _raw()
-    raw["operations"]["sequence"] = ["EVA"] * 14
-    with pytest.raises(InputError, match="sequence"):
         inputs.validate(raw, "prova.toml")
 
 

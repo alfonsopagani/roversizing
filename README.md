@@ -89,7 +89,7 @@ python -m dimensionamento progetti/ares.toml --sweep mobility.crr 0.1 0.6 11 --c
 - `--sweep sezione.chiave DA A N` ripete il dimensionamento per N valori equispaziati della chiave, lasciando invariato il resto: a ogni valore il rover è riprogettato. È lo studio di sensitività da usare nei trade-off; la tabella riporta anche i requisiti non soddisfatti. I valori sono nelle unità del file di input.
 - `--fuori-progetto sezione.chiave=valore` è la verifica fuori progetto, per esempio la verifica a C_rr = 0,6 richiesta dal brief. Il rover resta quello dimensionato con il file di input (massa, potenza di trazione installata, batteria, generazione); con il valore indicato si ricalcolano velocità, energia dell'escursione, notte e rientri, e il report dice quali requisiti non sono più soddisfatti. Si può ripetere.
 - `--congelato`, insieme a `--sweep`, fa la verifica fuori progetto per tutti i valori della scansione: la tabella mostra a quale valore ciascun requisito smette di essere soddisfatto, cioè quale cede per primo.
-- `--out` salva un file `report.md`, da cui copiare le tabelle nelle presentazioni, e un file CSV per tabella. Con `--sweep` salva la tabella della scansione (`sensitivita_<chiave>.md`, oppure `fuori_progetto_<chiave>.md` con `--congelato`); con `--fuori-progetto` salva `fuori_progetto.md`. I CSV usano il punto e virgola come separatore e la virgola decimale, e si aprono direttamente in Excel.
+- `--out` salva un file `report.md`, da cui copiare le tabelle nelle presentazioni, e un file CSV per tabella. Con `--sweep` salva la tabella della scansione (`sensitivita_<chiave>.md`, oppure `fuori_progetto_<chiave>.md` con `--congelato`); con `--fuori-progetto` salva `fuori_progetto_<chiave>_<valore>.md` (per esempio `fuori_progetto_mobility_crr_0,6.md`). I CSV usano il punto e virgola come separatore e la virgola decimale, e si aprono direttamente in Excel.
 - `--plot` salva i grafici della massa per sottosistema e dell'energia per escursione o, con `--sweep`, quelli della scansione (con `--congelato`: velocità con la potenza installata e debito di energia rispetto all'accumulo utile). Richiede matplotlib.
 
 ### Da VS Code
@@ -133,7 +133,7 @@ Il suffisso del nome indica l'unità: `v_mean_kmh` è in km/h, `power_kw` in kW,
 | --- | --- |
 | `[group]` | nome, versione, studenti |
 | `[architecture]` | architettura di potenza: `batterie`, `rps`, `fotovoltaico`, `celle_combustibile`, `ibrido` |
-| `[operations]`, `[[operations.sol_types]]` | ConOps: velocità media, salita cumulata, sol tipo con le ore di guida, EVA, sosta e notte, sequenza facoltativa dei sol |
+| `[operations]`, `[[operations.sol_types]]` | ConOps: velocità media, salita cumulata, sol tipo con le ore di guida, EVA e sosta di giorno e di guida e sosta di notte, sequenza facoltativa dei sol |
 | `[loads]` | carichi di servizio per modo operativo, prima del margine del 30% |
 | `[emergency]`, `[storm]` | rientro dal punto più lontano per MR-14 e MR-15 |
 | `[habitability]`, `[cabin]` | volumi, geometria e materiali della cabina |
@@ -231,12 +231,12 @@ I requisiti di missione (MR-01…MR-22), le ipotesi comuni del brief e l'ambient
 
 Il report contiene, nell'ordine:
 
-1. **intestazione**: missione, versione, studenti, architettura e stato di `common.toml`;
+1. **intestazione**: missione, versione, studenti, architettura, stato di `common.toml`, versione dello strumento e data dell'esecuzione;
 2. **budget di massa** per voce (base, MGA, prevista), totali con margine di sistema e riserva rispetto a MR-20, massa per sottosistema;
 3. **budget di potenza** per modo operativo, **budget di energia** per escursione e dimensionamento del **sistema di potenza**;
 4. **budget di volume** e geometria della cabina;
 5. **prestazioni**: velocità in piano e in pendenza, coppia alle ruote, percorrenza, autonomia, durata dei rientri;
-6. dettagli di **ECLSS**, **riparo**, **struttura** e **controllo termico**;
+6. dettagli di **ECLSS**, **riparo** e **controllo termico**;
 7. **ciclo di massa**: iterazioni, somma delle frazioni k e voci che vi contribuiscono;
 8. **verifica dei requisiti**, con valore richiesto, valore ottenuto ed esito;
 9. **masse per il modello FEM**.

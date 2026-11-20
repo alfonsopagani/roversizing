@@ -12,16 +12,18 @@ from __future__ import annotations
 
 import argparse
 import copy
+import re
 import sys
 from pathlib import Path
 
 from . import __version__
 from .constants import KWH
 from .inputs import InputError, apply_override, load_common, load_design, validate
-from .report import (format_markdown, format_text, plot_energy, plot_mass, print_report,
-                     requirements_table, write_outputs)
+from .report import (format_markdown, format_text, header_lines, markdown_header, plot_energy, plot_mass,
+                     print_report, requirements_table, write_outputs)
 from .requirements import n
-from .sensitivity import failed_requirements, linspace, plot_frozen, plot_sweep, sweep, sweep_table
+from .sensitivity import (failed_requirements, linspace, plot_frozen, plot_sweep, sweep, sweep_table,
+                          value_text)
 from .sizing import SizingError, off_design, run
 
 
@@ -65,12 +67,20 @@ def main(argv=None) -> int:
                 raise InputError(f"--sweep: DA, A e N devono essere numeri ({start}, {stop}, {count}).") from None
             rows = sweep(common, raw, name, key, values, frozen=args.congelato)
             table = sweep_table(key, rows, frozen=args.congelato)
+            head = header_lines(design, common, name) + [
+                f"Parametro variato: {key}, da {value_text(values[0])} a {value_text(values[-1])} "
+                f"in {len(values)} valori",
+                ("Rover congelato come dimensionato dal file di input: varia solo il parametro"
+                 if args.congelato else "Rover ridimensionato a ogni valore del parametro")]
+            title = "Verifica fuori progetto a rover congelato" if args.congelato else "Studio di sensitività"
+            print("\n".join(head) + "\n")
             print(format_text(table))
             prefix = "fuori_progetto" if args.congelato else "sensitivita"
             if args.out:
                 folder.mkdir(parents=True, exist_ok=True)
                 path = folder / f"{prefix}_{key.replace('.', '_')}.md"
-                path.write_text(format_markdown(table) + "\n", encoding="utf-8")
+                path.write_text(markdown_header(title, head) + "\n" + format_markdown(table) + "\n",
+                                encoding="utf-8")
                 print(f"\nTabella salvata in {path}")
             if args.plot:
                 folder.mkdir(parents=True, exist_ok=True)
@@ -85,21 +95,26 @@ def main(argv=None) -> int:
             for assignment in args.off_design:
                 apply_override(changed, assignment)
             nominal, off = off_design(common, design, validate(changed, name))
-            lines = [f"Verifica fuori progetto: {', '.join(args.off_design)}",
-                     f"File di input: {name}",
+            lines = header_lines(design, common, name) + [
+                     f"Condizioni fuori progetto: {', '.join(args.off_design)}",
                      "Rover congelato come dimensionato dal file di input: massa "
                      f"{n(nominal.budget.total)} kg, picco di trazione {n(nominal.dep.p_peak / 1e3, 1)} kW, "
                      f"batteria {n(nominal.dep.battery_capacity / KWH, 1)} kWh.",
                      f"Requisiti non soddisfatti nel progetto nominale: {failed_requirements(nominal)}",
-                     f"Requisiti non soddisfatti fuori progetto: {failed_requirements(off)}", ""]
+                     f"Requisiti non soddisfatti fuori progetto: {failed_requirements(off)}"]
             table = requirements_table(off)
-            print("\n".join(lines))
+            print("\n".join(lines) + "\n")
             print(format_text(table))
             if args.out:
                 folder.mkdir(parents=True, exist_ok=True)
-                path = folder / "fuori_progetto.md"
-                path.write_text("\n".join(lines) + "\n" + format_markdown(table) + "\n", encoding="utf-8")
+                tag = "_".join(a.split("=")[0].strip().replace(".", "_") + "_" + a.split("=", 1)[-1].strip()
+                               .replace(".", ",") for a in args.off_design)
+                path = folder / f"fuori_progetto_{re.sub(r'[^\w,-]', '_', tag)}.md"
+                path.write_text(markdown_header("Verifica fuori progetto", lines) + "\n" + format_markdown(table) + "\n",
+                                encoding="utf-8")
                 print(f"\nSalvato {path}")
+            if args.plot:
+                print("\nNessun grafico per la verifica in un punto: per i grafici usare --sweep ... --congelato.")
             return 0
 
         res = run(common, design)

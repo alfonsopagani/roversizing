@@ -20,8 +20,28 @@ from dataclasses import dataclass, field
 
 from .constants import HOUR
 
-MODES = ("drive", "eva", "day", "night")      # ordine delle fasi all'interno di un sol
-MODE_LABELS = {"drive": "guida", "eva": "EVA", "day": "sosta di giorno", "night": "notte"}
+MODES = ("day_drive", "day_eva", "day_stop", "night_drive", "night_stop")   # ordine delle fasi nel sol
+MODE_LABELS = {"day_drive": "guida di giorno", "day_eva": "EVA", "day_stop": "sosta di giorno",
+               "night_drive": "guida notturna", "night_stop": "sosta notturna"}
+LIGHT_MODES = ("day_drive", "day_eva", "day_stop")     # fasi di luce, dall'alba
+DRIVE_MODES = ("day_drive", "night_drive")             # fasi con trazione
+
+
+def hours(s, mode: str) -> float:
+    """Durata del modo nel sol tipo s [s] (0 per la guida notturna non dichiarata)."""
+    return getattr(s, mode, 0.0)
+
+
+def night_time(s) -> float:
+    """Durata della notte nel sol tipo s [s]: guida notturna + sosta notturna."""
+    return hours(s, "night_drive") + s.night_stop
+
+
+def modes_used(sol_types) -> tuple[str, ...]:
+    """Modi presenti nell'escursione: la guida notturna solo se dichiarata."""
+    if any(hours(s, "night_drive") > 0 for s in sol_types):
+        return MODES
+    return tuple(m for m in MODES if m != "night_drive")
 
 
 # ---------------------------------------------------------------------------
@@ -37,7 +57,7 @@ def service_loads(loads, margin: float) -> dict[str, float]:
 
 def drive_time(sol_types) -> float:
     """Tempo totale di guida nell'escursione [s]: Σ n_s · t_guida,s."""
-    return sum(s.count * s.drive for s in sol_types)
+    return sum(s.count * sum(hours(s, m) for m in DRIVE_MODES) for s in sol_types)
 
 
 def sol_sequence(sol_types, order: list[str] | None = None) -> list:
@@ -66,13 +86,14 @@ def service_energy(sol_types, p_service: dict[str, float]) -> dict[str, float]:
 
         E_modo = Σ_s n_s·t_modo,s·P_modo
     """
-    return {mode: sum(s.count * getattr(s, mode) for s in sol_types) * p_service[mode]
+    return {mode: sum(s.count * hours(s, mode) for s in sol_types) * p_service.get(mode, 0.0)
             for mode in MODES}
 
 
 def sol_energy(sol, p_service: dict[str, float], traction_rate: float) -> float:
     """Energia richiesta in un sol tipo [J]: Σ_modi P_modo·t_modo + P_trazione·t_guida."""
-    return sum(p_service[m] * getattr(sol, m) for m in MODES) + traction_rate * sol.drive
+    return (sum(p_service.get(m, 0.0) * hours(sol, m) for m in MODES)
+            + traction_rate * sum(hours(sol, m) for m in DRIVE_MODES))
 
 
 # ---------------------------------------------------------------------------
@@ -99,7 +120,7 @@ def pv_collectable(sol_type, sol: float, deployed_while_driving: bool) -> float:
     """
     if deployed_while_driving:
         return 1.0
-    return 1.0 - pv_share(0.0, sol_type.drive, sol - sol_type.night)
+    return 1.0 - pv_share(0.0, sol_type.day_drive, sol - night_time(sol_type))
 
 
 @dataclass
@@ -163,10 +184,11 @@ def simulate(sequence, p_service, traction_rate: float, gen: Generation,
     """Bilancio di energia fase per fase e capacità utile della batteria (MODELLI §8).
 
         E_carico = (P_modo + P_tr)·Δt                (P_tr solo in guida)
-        E_gen    = P_RPS·Δt + P_FV·h_sole·q(t0, t1)  (E_FV = 0 in guida, salvo pv_while_driving)
+        E_gen    = P_RPS·Δt + P_FV·h_sole·q(t0, t1)  (E_FV = 0 in guida e di notte, salvo pv_while_driving)
         debito   = max(0, debito + E_carico - E_gen)
 
-    Le fasi di luce seguono l'ordine di ``MODES`` a partire dall'alba. La
+    Le fasi seguono l'ordine di ``MODES``: quelle di luce dall'alba, poi quelle
+    della notte. La
     capacità utile richiesta è il debito massimo. Un ciclo si chiude quando il
     debito torna a zero; il debito residuo a fine escursione conta come un
     ciclo (ricarica alla base). Con ``fc_covers_loads`` la generazione copre
@@ -175,17 +197,17 @@ def simulate(sequence, p_service, traction_rate: float, gen: Generation,
     deficit = peak = 0.0
     sim = EnergySimulation(0.0)
     for s in sequence:
-        light = sol - s.night
+        light = sol - night_time(s)
         e_pv_sol = gen.pv * sun_hours
         t = 0.0                                          # tempo dall'alba [s]
         for mode in MODES:
-            dt = getattr(s, mode)
+            dt = hours(s, mode)
             if dt <= 0:
                 continue
-            e_load = (p_service[mode] + (traction_rate if mode == "drive" else 0.0)) * dt
+            e_load = (p_service.get(mode, 0.0) + (traction_rate if mode in DRIVE_MODES else 0.0)) * dt
             e_pv = 0.0
-            if mode != "night" and light > 0:
-                if mode != "drive" or pv_while_driving:
+            if mode in LIGHT_MODES and light > 0:
+                if mode != "day_drive" or pv_while_driving:
                     e_pv = e_pv_sol * pv_share(t, t + dt, light)
                 t += dt
             e_gen = gen.rps * dt + e_pv
@@ -198,7 +220,8 @@ def simulate(sequence, p_service, traction_rate: float, gen: Generation,
             if deficit == 0.0 and peak > 0.0:
                 sim.cycles.append(peak)
                 peak = 0.0
-        sim.night_need = max(sim.night_need, p_service["night"] * s.night)
+        sim.night_need = max(sim.night_need, p_service.get("night_stop", 0.0) * hours(s, "night_stop")
+                             + (p_service.get("night_drive", 0.0) + traction_rate) * hours(s, "night_drive"))
     sim.end_deficit = deficit
     if peak > 0.0:
         sim.cycles.append(peak)

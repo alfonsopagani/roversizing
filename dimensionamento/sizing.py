@@ -33,7 +33,7 @@ def fixed_part(c, d) -> SimpleNamespace:
         raise SizingError(f"[[operations.sol_types]]: i sol tipo sommano a {duration_sols} sol, "
                           f"ma l'escursione dura {m.excursion_sols} sol (MR-03).")
     for s in ops.sol_types:
-        total = s.drive + s.day + s.night + s.eva
+        total = sum(power.hours(s, mode) for mode in power.MODES)
         if abs(total - env.sol) > 0.05 * 3600:
             raise SizingError(f"sol tipo '{s.name}': le ore dei modi sommano a {total / 3600:.2f} h, "
                               f"ma un sol dura {env.sol / 3600:.2f} h.")
@@ -77,7 +77,8 @@ def fixed_part(c, d) -> SimpleNamespace:
     out.e_service = power.service_energy(ops.sol_types, out.p_service)
     t = d.thermal
     out.t_sink = thermal.sink_temperature(env.ground_hot, env.sky_hot, t.ground_view_factor)
-    heat_nominal = thermal.heat_load(m.crew, d.eclss.metabolic, max(out.p_service.values()),
+    heat_nominal = thermal.heat_load(m.crew, d.eclss.metabolic,
+                                     max(out.p_service[mo] for mo in power.modes_used(ops.sol_types)),
                                      t.dissipated_fraction)
     heat_emergency = thermal.heat_load(m.emergency_crew, d.eclss.metabolic,
                                        (1.0 + c.margins.power) * d.emergency.load, t.dissipated_fraction)
@@ -137,7 +138,8 @@ def mass_dependent(c, d, fx, mass: float) -> SimpleNamespace:
 
     # Batteria: energia utile, potenza di picco, DOD
     b = d.battery
-    out.p_peak_electric = out.p_peak + fx.p_service["drive"]       # picco di trazione + servizio in guida
+    used = power.modes_used(ops.sol_types)                       # guida notturna solo se dichiarata
+    out.p_peak_electric = out.p_peak + max(fx.p_service[mo] for mo in power.DRIVE_MODES if mo in used)
     out.battery_capacity, out.battery_criterion = power.battery_capacity(
         out.sim.max_deficit, b.dod_max, out.p_peak_electric,
         out.gen.rps + out.gen.fc_energy / duration, b.c_rate_max)
@@ -168,19 +170,19 @@ def build_items(c, d, fx, dep, mass: float) -> list[Item]:
         Item("Pavimento e pareti interne", "struttura", fx.cabin.interior, cab.interior_maturity,
              "massa areale", p("cabin")),
         Item("Isolamento della cabina", "termico", fx.cabin.insulation, cab.insulation_maturity,
-             "spessore x densità", p("cabin")),
-        Item("Serbatoi di O2, N2 e acqua", "eclss", fx.tanks, ecl.tanks_maturity,
+             "spessore × densità", p("cabin")),
+        Item("Serbatoi di O₂, N₂ e acqua", "eclss", fx.tanks, ecl.tanks_maturity,
              "fattori dei serbatoi", p("tanks")),
         Item("Radiatore della cabina", "termico", fx.radiator_area * d.thermal.radiator_areal,
              d.thermal.maturity, "bilancio radiativo", p("radiator")),
         Item("Azionamento (motori, riduttori, controllori)", "mobilita", dep.drive_mass,
-             d.mobility.drive_maturity, "kg/kW x potenza di picco", p("drive")),
+             d.mobility.drive_maturity, "kg/kW × potenza di picco", p("drive")),
         Item("Batteria", "potenza", dep.battery_mass, d.battery.maturity,
              f"dimensionata su {dep.battery_criterion}", p("battery")),
     ]
     if fx.shelter.added > 0:
         items.append(Item("Schermo aggiuntivo del riparo", "radiazioni", fx.shelter.added,
-                          d.radiation.maturity, "g/cm2 x superficie", p("shield")))
+                          d.radiation.maturity, "g/cm² × superficie", p("shield")))
     if dep.rps_mass > 0:
         items.append(Item("RPS", "potenza", dep.rps_mass, d.rps.maturity, "W/kg", p("rps")))
     if dep.pv_mass > 0:
@@ -199,13 +201,13 @@ def build_items(c, d, fx, dep, mass: float) -> list[Item]:
         Item("Carico scientifico", "carico utile", m.payload, None, "MR-06", p("payload"), True),
         Item("Equipaggio", "equipaggio", m.crew * ecl.body_mass, None, "MR-01", p("crew"), True),
         Item("Tute EVA", "eva", d.suits.count * d.suits.mass, None, "dichiarata", p("suits"), True),
-        Item("O2", "consumabili", cons.o2, None, "ECLSS", p("tanks"), True),
-        Item("N2", "consumabili", cons.n2, None, "ECLSS", p("tanks"), True),
+        Item("O₂", "consumabili", cons.o2, None, "ECLSS", p("tanks"), True),
+        Item("N₂", "consumabili", cons.n2, None, "ECLSS", p("tanks"), True),
         Item("Acqua", "consumabili", cons.water, None, "ECLSS", p("tanks"), True),
         Item("Cibo", "consumabili", cons.food, None, "ECLSS", p("crew"), True),
     ]
     if cons.sorbent > 0:
-        items.append(Item("Assorbitore di CO2", "consumabili", cons.sorbent, None, "ECLSS",
+        items.append(Item("Assorbitore di CO₂", "consumabili", cons.sorbent, None, "ECLSS",
                           p("crew"), True))
     return items
 
@@ -300,7 +302,7 @@ def return_cases(c, d, dep, mass: float) -> tuple[power.Return, power.Return]:
     stored_full = dep.battery_capacity * d.battery.dod_max + dep.gen.fc_energy
     sun = d.pv.sun_hours if hasattr(d, "pv") else 1.0
     pv_moving = d.pv.deployed_while_driving if hasattr(d, "pv") else False
-    light = env.sol - max(s.night for s in ops.sol_types)     # giorno più corto dei sol tipo
+    light = env.sol - max(power.night_time(s) for s in ops.sol_types)   # giorno più corto dei sol tipo
     cases = []
     for case, extra_crew, pv_factor in ((d.emergency, m.emergency_crew - m.crew, 1.0),
                                         (d.storm, 0, m.storm_irradiance_fraction)):

@@ -26,6 +26,8 @@ def test_cabin_hemispherical_heads():
     assert g.cylinder_length == pytest.approx(1.8498, abs=1e-4)
     assert g.area == pytest.approx(24.19, abs=0.01)
     assert g.length == pytest.approx(3.8498, abs=1e-4)
+    with pytest.raises(ValueError):
+        habitability.cabin_geometry(5.0, 3.0, "semisferici")       # sfera da 14,1 m^3 > 5 m^3
 
 
 def test_elliptical_heads_area():
@@ -35,11 +37,6 @@ def test_elliptical_heads_area():
     assert v == pytest.approx(4 / 3 * math.pi * 0.5)
     # con k = 1 si ritrova la sfera
     assert habitability.head_volume_area(1.0, 1.0, "ellittici")[1] == pytest.approx(4 * math.pi)
-
-
-def test_cabin_too_wide():
-    with pytest.raises(ValueError):
-        habitability.cabin_geometry(5.0, 3.0, "semisferici")       # sfera da 14,1 m^3 > 5 m^3
 
 
 # --- ECLSS -------------------------------------------------------------------
@@ -87,30 +84,23 @@ def test_fem_override():
 
 
 # --- Mobilità ----------------------------------------------------------------
-def test_traction_power_flat_and_slope():
+def test_traction_power_peak_and_speed():
     # 0,2 · 1000 kg · 3,72 m/s^2 · 1 m/s / 1 = 744 W
     assert mobility.traction_power(1000, 3.72, 0.2, 0.0, 1.0, 1.0) == pytest.approx(744.0)
     # 30°: (0,2·cos30 + sin30)·3720 = (0,17321 + 0,5)·3720 = 2504,3 W
     assert mobility.traction_power(1000, 3.72, 0.2, math.radians(30), 1.0, 1.0) == pytest.approx(2504.3, abs=0.1)
-
-
-def test_peak_power_case():
     p, case = mobility.peak_power(1000, 3.72, 0.3, 1.0, 5 / 3.6, math.radians(15), 1 / 3.6)
     assert case == "piano" and p == pytest.approx(0.3 * 3720 * 5 / 3.6)
-
-
-def test_traction_energy():
-    # (1 + 0,05) · (0,1·1000·3,72·1000 + 1000·3,72·100) / 0,5 = 1,05 · 744 000 / 0,5 J
-    e = mobility.traction_energy(1000, 3.72, 0.1, 0.5, 1000.0, 100.0, 0.05)
-    assert e == pytest.approx(1.05 * (372e3 + 372e3) / 0.5)
-
-
-def test_max_speed_inverts_power():
+    # la velocità raggiungibile inverte la potenza
     p = mobility.traction_power(5000, 3.72, 0.25, 0.1, 2.0, 0.8)
     assert mobility.max_speed(p, 5000, 3.72, 0.25, 0.1, 0.8) == pytest.approx(2.0)
 
 
-def test_tipping_angle():
+def test_traction_energy_and_tipping_angle():
+    # (1 + 0,05) · (0,1·1000·3,72·1000 + 1000·3,72·100) / 0,5 = 1,05 · 744 000 / 0,5 J
+    e = mobility.traction_energy(1000, 3.72, 0.1, 0.5, 1000.0, 100.0, 0.05)
+    assert e == pytest.approx(1.05 * (372e3 + 372e3) / 0.5)
+    # carreggiata 2 m, baricentro a 1 m: tanφ = 1
     assert math.degrees(mobility.tipping_angle(2.0, 1.0)) == pytest.approx(45.0)
 
 
@@ -121,10 +111,7 @@ def test_radiator_area_and_sink_temperature():
     # pozzo: cielo con F = 0, suolo con F = 1
     assert thermal.sink_temperature(247.0, 179.5, 0.0) == pytest.approx(179.5)
     assert thermal.sink_temperature(247.0, 179.5, 1.0) == pytest.approx(247.0)
-
-
-def test_radiator_colder_than_sink():
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError):                    # radiatore più freddo del pozzo
         thermal.radiator_area(1000.0, 200.0, 220.0, 0.84)
 
 
@@ -157,13 +144,14 @@ def test_allowed_cycles_step():
 
 
 def _sol(name, drive, eva, day, night, count=1):
-    return NS(name=name, count=count, drive=drive * HOUR, eva=eva * HOUR, day=day * HOUR, night=night * HOUR)
+    return NS(name=name, count=count, day_drive=drive * HOUR, day_eva=eva * HOUR, day_stop=day * HOUR,
+              night_stop=night * HOUR)
 
 
 def test_simulate_battery_only():
     # carico costante 1 kW per 2 sol da 24 h, nessuna generazione: debito 48 kWh, un ciclo
     sols = [_sol("a", 0, 0, 12, 12, 2)]
-    p = {"drive": 1e3, "eva": 1e3, "day": 1e3, "night": 1e3}
+    p = {"day_drive": 1e3, "day_eva": 1e3, "day_stop": 1e3, "night_stop": 1e3}
     sim = power.simulate(power.sol_sequence(sols), p, 0.0, power.Generation(), 24 * HOUR, 1.0, False)
     assert sim.max_deficit == pytest.approx(48 * KWH)
     assert len(sim.cycles) == 1
@@ -173,7 +161,7 @@ def test_simulate_pv_daily_cycle():
     # 1 kW costante; ala con 2 kW nominali e 12 h equivalenti: 24 kWh di giorno = carico del sol.
     # Di giorno l'ala fornisce 2 kW per 12 h: surplus 12 kWh; di notte debito 12 kWh, un ciclo per sol.
     sols = [_sol("a", 0, 0, 12, 12, 3)]
-    p = {"drive": 1e3, "eva": 1e3, "day": 1e3, "night": 1e3}
+    p = {"day_drive": 1e3, "day_eva": 1e3, "day_stop": 1e3, "night_stop": 1e3}
     gen = power.Generation(pv=2e3)
     sim = power.simulate(power.sol_sequence(sols), p, 0.0, gen, 24 * HOUR, 12 * HOUR, False)
     assert sim.max_deficit == pytest.approx(12 * KWH)
@@ -194,17 +182,10 @@ def test_return_trip_duration():
 
 
 # --- fotovoltaico: ala ripiegata durante la guida -------------------------------
-def test_pv_share_integrates_to_one():
-    light = 12 * HOUR
-    assert power.pv_share(0.0, light, light) == pytest.approx(1.0)
-    assert power.pv_share(0.0, light / 2, light) == pytest.approx(0.5)
-    assert power.pv_share(light, 2 * light, light) == 0.0
-
-
 def test_pv_no_production_while_driving():
     sol = 24.65 * HOUR
-    s = NS(name="guida", count=1, drive=4 * HOUR, eva=0.0, day=8.65 * HOUR, night=12 * HOUR)
-    p = {"drive": 1000.0, "eva": 0.0, "day": 0.0, "night": 0.0}
+    s = NS(name="guida", count=1, day_drive=4 * HOUR, day_eva=0.0, day_stop=8.65 * HOUR, night_stop=12 * HOUR)
+    p = {"day_drive": 1000.0, "day_eva": 0.0, "day_stop": 0.0, "night_stop": 0.0}
     gen = power.Generation(pv=10_000.0)
     # solo la guida consuma: con l'ala ripiegata nessuna produzione la compensa
     stowed = power.simulate([s], p, 0.0, gen, sol, 9 * HOUR, False, pv_while_driving=False)
@@ -213,10 +194,14 @@ def test_pv_no_production_while_driving():
     assert open_.max_deficit < stowed.max_deficit
 
 
-def test_pv_auto_sizing_uses_collectable_share():
+def test_pv_share_and_auto_sizing():
+    light = 12 * HOUR
+    assert power.pv_share(0.0, light, light) == pytest.approx(1.0)
+    assert power.pv_share(0.0, light / 2, light) == pytest.approx(0.5)
+    assert power.pv_share(light, 2 * light, light) == 0.0
     sol = 24.65 * HOUR
-    s = NS(name="guida", count=1, drive=6.325 * HOUR, eva=0.0, day=6.325 * HOUR, night=12 * HOUR)
-    p = {"drive": 1000.0, "eva": 0.0, "day": 1000.0, "night": 1000.0}
+    s = NS(name="guida", count=1, day_drive=6.325 * HOUR, day_eva=0.0, day_stop=6.325 * HOUR, night_stop=12 * HOUR)
+    p = {"day_drive": 1000.0, "day_eva": 0.0, "day_stop": 1000.0, "night_stop": 1000.0}
     d = NS(pv=NS(power=0.0, sun_hours=9 * HOUR, deployed_while_driving=False))
     gen = power.generation("fotovoltaico", d, [s], p, 0.0, 0.0, sol, sol)
     e_sol = 1000.0 * sol
